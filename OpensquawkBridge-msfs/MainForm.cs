@@ -35,7 +35,7 @@ internal sealed class MainForm : Form
         ForeColor = Color.White;
         Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point);
         Padding = new Padding(32, 32, 32, 24);
-        MinimumSize = new Size(580, 640);
+        MinimumSize = new Size(760, 720);
         DoubleBuffered = true;
 
         var titleLabel = new Label
@@ -64,8 +64,10 @@ internal sealed class MainForm : Form
         {
             FlowDirection = FlowDirection.LeftToRight,
             AutoSize = true,
-            WrapContents = false,
-            Margin = new Padding(0, 0, 0, 24)
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = true,
+            Margin = new Padding(0, 0, 0, 24),
+            Anchor = AnchorStyles.Left | AnchorStyles.Right
         };
         badgePanel.Controls.Add(_connectionBadge);
         badgePanel.Controls.Add(_simBadge);
@@ -85,8 +87,9 @@ internal sealed class MainForm : Form
             BackColor = _panelColor,
             Padding = new Padding(16),
             Margin = new Padding(0, 0, 0, 20),
-            Height = 90,
-            Dock = DockStyle.Top
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
 
         var tokenLabel = new Label
@@ -106,7 +109,9 @@ internal sealed class MainForm : Form
             BackColor = _panelColor,
             ForeColor = Color.White,
             Font = new Font("Consolas", 10F, FontStyle.Regular, GraphicsUnit.Point),
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0),
+            MinimumSize = new Size(0, 32)
         };
 
         tokenPanel.Controls.Add(_tokenBox);
@@ -122,16 +127,35 @@ internal sealed class MainForm : Form
         _copyButton = CreateSecondaryButton("Copy token");
         _copyButton.Click += (_, __) => CopyTokenToClipboard();
 
-        var buttonPanel = new FlowLayoutPanel
+        var buttonPanel = new TableLayoutPanel
         {
-            FlowDirection = FlowDirection.LeftToRight,
+            ColumnCount = 3,
+            RowCount = 1,
+            Dock = DockStyle.Top,
             AutoSize = true,
-            WrapContents = false,
-            Margin = new Padding(0, 0, 0, 20)
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = new Padding(0, 0, 0, 20),
+            BackColor = Color.Transparent,
+            GrowStyle = TableLayoutPanelGrowStyle.FixedSize,
+            Padding = new Padding(0),
+            Anchor = AnchorStyles.Left | AnchorStyles.Right
         };
-        buttonPanel.Controls.Add(_connectButton);
-        buttonPanel.Controls.Add(_resetButton);
-        buttonPanel.Controls.Add(_copyButton);
+        buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+        buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+        buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34F));
+        buttonPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        _connectButton.Dock = DockStyle.Fill;
+        _resetButton.Dock = DockStyle.Fill;
+        _copyButton.Dock = DockStyle.Fill;
+
+        _connectButton.Margin = new Padding(0, 0, 16, 0);
+        _resetButton.Margin = new Padding(0, 0, 16, 0);
+        _copyButton.Margin = new Padding(0);
+
+        buttonPanel.Controls.Add(_connectButton, 0, 0);
+        buttonPanel.Controls.Add(_resetButton, 1, 0);
+        buttonPanel.Controls.Add(_copyButton, 2, 0);
 
         _logBox = new RichTextBox
         {
@@ -160,8 +184,11 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill,
             AutoSize = false,
             BackColor = Color.Transparent,
-            ColumnCount = 1
+            ColumnCount = 1,
+            AutoScroll = true,
+            Padding = new Padding(0)
         };
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -196,18 +223,19 @@ internal sealed class MainForm : Form
 
     private BadgeLabel CreateBadge(string text, Color color)
     {
-        return new BadgeLabel
+        var badge = new BadgeLabel
         {
-            Text = text,
-            AutoSize = false,
-            Size = new Size(170, 40),
-            Margin = new Padding(0, 0, 12, 0),
+            Margin = new Padding(0, 0, 12, 12),
             BackColor = color,
             ForeColor = Color.White,
             CornerRadius = 20,
-            Padding = new Padding(0),
-            TextAlign = ContentAlignment.MiddleCenter
+            MinimumSize = new Size(180, 44),
+            Padding = new Padding(20, 8, 20, 8),
+            Font = new Font("Segoe UI", 10F, FontStyle.SemiBold, GraphicsUnit.Point)
         };
+
+        badge.Text = text;
+        return badge;
     }
 
     private RoundedButton CreatePrimaryButton(string text)
@@ -217,8 +245,8 @@ internal sealed class MainForm : Form
             Text = text,
             BackColor = _primaryColor,
             ForeColor = Color.Black,
-            Margin = new Padding(0, 0, 12, 0),
-            Size = new Size(200, 44),
+            Margin = new Padding(0, 0, 16, 0),
+            MinimumSize = new Size(0, 48),
             CornerRadius = 24,
             Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point)
         };
@@ -231,8 +259,8 @@ internal sealed class MainForm : Form
             Text = text,
             BackColor = _secondaryColor,
             ForeColor = Color.White,
-            Margin = new Padding(0, 0, 12, 0),
-            Size = new Size(200, 44),
+            Margin = new Padding(0, 0, 16, 0),
+            MinimumSize = new Size(0, 48),
             CornerRadius = 24,
             Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point)
         };
@@ -365,61 +393,30 @@ internal sealed class RoundedButton : Button
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
         DoubleBuffered = true;
+        Cursor = Cursors.Hand;
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
     }
 
     protected override void OnPaint(PaintEventArgs pevent)
     {
         pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        pevent.Graphics.Clear(Color.Transparent);
+        var baseColor = ResolveBackColor();
+        pevent.Graphics.Clear(baseColor);
 
-        using var path = CreateRoundPath(ClientRectangle, CornerRadius);
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        using var path = CreateRoundPath(rect, CornerRadius);
         using var brush = new SolidBrush(BackColor);
         pevent.Graphics.FillPath(brush, path);
 
         var textRect = new Rectangle(0, 0, Width, Height);
-        TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
-        // verhindert Flackern
-    }
-
-    private static GraphicsPath CreateRoundPath(Rectangle rect, int radius)
-    {
-        int diameter = radius * 2;
-        Rectangle arcRect = new Rectangle(rect.Location, new Size(diameter, diameter));
-        GraphicsPath path = new GraphicsPath();
-
-        path.AddArc(arcRect, 180, 90);
-        arcRect.X = rect.Right - diameter;
-        path.AddArc(arcRect, 270, 90);
-        arcRect.Y = rect.Bottom - diameter;
-        path.AddArc(arcRect, 0, 90);
-        arcRect.X = rect.Left;
-        path.AddArc(arcRect, 90, 90);
-        path.CloseFigure();
-        return path;
-    }
-}
-
-internal sealed class BadgeLabel : Label
-{
-    public int CornerRadius { get; set; } = 16;
-
-    protected override void OnPaint(PaintEventArgs e)
-    {
-        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        using var path = CreateRoundPath(new Rectangle(0, 0, Width - 1, Height - 1), CornerRadius);
-        using var brush = new SolidBrush(BackColor);
-        e.Graphics.FillPath(brush, path);
-
-        TextRenderer.DrawText(e.Graphics, Text, Font, new Rectangle(0, 0, Width, Height), ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-    }
-
-    protected override void OnPaintBackground(PaintEventArgs pevent)
-    {
-        // verhindern, dass der Parent-Hintergrund gezeichnet wird
+        var baseColor = ResolveBackColor();
+        using var brush = new SolidBrush(baseColor);
+        pevent.Graphics.FillRectangle(brush, pevent.ClipRectangle);
     }
 
     protected override void OnResize(EventArgs e)
@@ -443,5 +440,123 @@ internal sealed class BadgeLabel : Label
         path.AddArc(arcRect, 90, 90);
         path.CloseFigure();
         return path;
+    }
+
+    private Color ResolveBackColor()
+    {
+        Control? current = Parent;
+        while (current is not null && current.BackColor.A == 0)
+        {
+            current = current.Parent;
+        }
+
+        if (current is not null)
+        {
+            return current.BackColor;
+        }
+
+        return FindForm()?.BackColor ?? SystemColors.Control;
+    }
+}
+
+internal sealed class BadgeLabel : Label
+{
+    public int CornerRadius { get; set; } = 16;
+
+    public BadgeLabel()
+    {
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        using var path = CreateRoundPath(new Rectangle(0, 0, Width - 1, Height - 1), CornerRadius);
+        using var brush = new SolidBrush(BackColor);
+        e.Graphics.FillPath(brush, path);
+
+        var textRect = new Rectangle(Padding.Left, Padding.Top, Width - Padding.Horizontal, Height - Padding.Vertical);
+        TextRenderer.DrawText(e.Graphics, Text, Font, textRect, ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+    }
+
+    protected override void OnPaintBackground(PaintEventArgs pevent)
+    {
+        var baseColor = ResolveBackColor();
+        using var brush = new SolidBrush(baseColor);
+        pevent.Graphics.FillRectangle(brush, pevent.ClipRectangle);
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        Invalidate();
+    }
+
+    protected override void OnTextChanged(EventArgs e)
+    {
+        base.OnTextChanged(e);
+        AdjustSize();
+    }
+
+    protected override void OnFontChanged(EventArgs e)
+    {
+        base.OnFontChanged(e);
+        AdjustSize();
+    }
+
+    protected override void OnPaddingChanged(EventArgs e)
+    {
+        base.OnPaddingChanged(e);
+        AdjustSize();
+    }
+
+    private void AdjustSize()
+    {
+        if (!AutoSize)
+        {
+            Invalidate();
+            return;
+        }
+
+        var textSize = TextRenderer.MeasureText(Text, Font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.SingleLine);
+        int desiredWidth = Math.Max(MinimumSize.Width, textSize.Width + Padding.Horizontal);
+        int desiredHeight = Math.Max(MinimumSize.Height, textSize.Height + Padding.Vertical);
+        Size = new Size(desiredWidth, desiredHeight);
+        Invalidate();
+    }
+
+    private static GraphicsPath CreateRoundPath(Rectangle rect, int radius)
+    {
+        int diameter = radius * 2;
+        Rectangle arcRect = new Rectangle(rect.Location, new Size(diameter, diameter));
+        GraphicsPath path = new GraphicsPath();
+
+        path.AddArc(arcRect, 180, 90);
+        arcRect.X = rect.Right - diameter;
+        path.AddArc(arcRect, 270, 90);
+        arcRect.Y = rect.Bottom - diameter;
+        path.AddArc(arcRect, 0, 90);
+        arcRect.X = rect.Left;
+        path.AddArc(arcRect, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
+    private Color ResolveBackColor()
+    {
+        Control? current = Parent;
+        while (current is not null && current.BackColor.A == 0)
+        {
+            current = current.Parent;
+        }
+
+        if (current is not null)
+        {
+            return current.BackColor;
+        }
+
+        return FindForm()?.BackColor ?? SystemColors.Control;
     }
 }
