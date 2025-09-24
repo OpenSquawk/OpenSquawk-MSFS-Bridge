@@ -18,6 +18,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\icon.png">
+      <Link>icon.png</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OpensquawkBridge.Abstractions\OpensquawkBridge.Abstractions.csproj" />
   </ItemGroup>
 

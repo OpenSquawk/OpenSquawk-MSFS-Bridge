@@ -2,6 +2,8 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -38,6 +40,7 @@ internal sealed class MainForm : Form
         ClientSize = new Size(820, 640);
         MinimumSize = new Size(780, 640);
         DoubleBuffered = true;
+        Icon = LoadAppIcon();
 
         var titleLabel = new Label
         {
@@ -187,6 +190,33 @@ internal sealed class MainForm : Form
         _manager.TokenChanged += (_, __) => UpdateTokenText(_manager.Token);
 
         Shown += MainForm_Shown;
+    }
+
+    private static Icon LoadAppIcon()
+    {
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "icon.png");
+            if (!File.Exists(iconPath))
+            {
+                return SystemIcons.Application;
+            }
+
+            using var bitmap = new Bitmap(iconPath);
+            var handle = bitmap.GetHicon();
+            try
+            {
+                return (Icon)Icon.FromHandle(handle).Clone();
+            }
+            finally
+            {
+                NativeMethods.DestroyIcon(handle);
+            }
+        }
+        catch
+        {
+            return SystemIcons.Application;
+        }
     }
 
     private async void MainForm_Shown(object? sender, EventArgs e)
@@ -354,6 +384,12 @@ internal sealed class MainForm : Form
         {
             sourceButton.Enabled = true;
         }
+    }
+
+    private static class NativeMethods
+    {
+        [DllImport("user32.dll")]
+        public static extern bool DestroyIcon(IntPtr handle);
     }
 }
 
