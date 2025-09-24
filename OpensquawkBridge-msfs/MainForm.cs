@@ -49,16 +49,16 @@ internal sealed class MainForm : Form
 
         var subtitleLabel = new Label
         {
-            Text = "MSFS Telemetrie & Login",
+            Text = "MSFS Telemetry & Login",
             AutoSize = true,
             Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point),
             ForeColor = Color.FromArgb(200, 255, 255, 255),
             Margin = new Padding(0, 0, 0, 24)
         };
 
-        _connectionBadge = CreateBadge("Nicht verbunden", _secondaryColor);
-        _simBadge = CreateBadge("Sim offline", _secondaryColor);
-        _flightBadge = CreateBadge("Flug inaktiv", _secondaryColor);
+        _connectionBadge = CreateBadge("Not connected", _secondaryColor);
+        _simBadge = CreateBadge("Simulator offline", _secondaryColor);
+        _flightBadge = CreateBadge("Flight inactive", _secondaryColor);
 
         var badgePanel = new FlowLayoutPanel
         {
@@ -75,7 +75,7 @@ internal sealed class MainForm : Form
         {
             AutoSize = true,
             Font = new Font("Segoe UI", 11F, FontStyle.Bold, GraphicsUnit.Point),
-            Text = "Kein Benutzer verbunden",
+            Text = "No user connected",
             ForeColor = Color.FromArgb(220, 255, 255, 255),
             Margin = new Padding(0, 0, 0, 20)
         };
@@ -113,13 +113,13 @@ internal sealed class MainForm : Form
         tokenPanel.Controls.Add(tokenLabel);
         tokenPanel.Controls.SetChildIndex(tokenLabel, 0);
 
-        _connectButton = CreatePrimaryButton("Im Browser verbinden");
+        _connectButton = CreatePrimaryButton("Open login in browser");
         _connectButton.Click += (_, __) => _manager.OpenLoginPage();
 
-        _resetButton = CreateSecondaryButton("Logout & neuen Token");
+        _resetButton = CreateSecondaryButton("Log out & new token");
         _resetButton.Click += async (_, __) => await RunAsyncAction(_resetButton, _manager.ResetTokenAsync);
 
-        _copyButton = CreateSecondaryButton("Token kopieren");
+        _copyButton = CreateSecondaryButton("Copy token");
         _copyButton.Click += (_, __) => CopyTokenToClipboard();
 
         var buttonPanel = new FlowLayoutPanel
@@ -259,15 +259,15 @@ internal sealed class MainForm : Form
 
         if (e.IsConnected)
         {
-            _connectionBadge.Text = e.UserName != null ? $"Verbunden als {e.UserName}" : "Verbunden";
+            _connectionBadge.Text = e.UserName != null ? $"Connected as {e.UserName}" : "Connected";
             _connectionBadge.BackColor = Color.FromArgb(60, _primaryColor);
-            _userStatusLabel.Text = e.UserName != null ? $"Angemeldet als {e.UserName}" : "Benutzer verbunden";
+            _userStatusLabel.Text = e.UserName != null ? $"Signed in as {e.UserName}" : "User connected";
         }
         else
         {
-            _connectionBadge.Text = "Nicht verbunden";
+            _connectionBadge.Text = "Not connected";
             _connectionBadge.BackColor = _secondaryColor;
-            _userStatusLabel.Text = "Kein Benutzer verbunden";
+            _userStatusLabel.Text = "No user connected";
         }
     }
 
@@ -281,28 +281,28 @@ internal sealed class MainForm : Form
 
         if (e.SimConnected)
         {
-            _simBadge.Text = "Sim verbunden";
+            _simBadge.Text = "Simulator connected";
             _simBadge.BackColor = Color.FromArgb(60, 76, 217, 100);
         }
         else
         {
-            _simBadge.Text = "Sim offline";
+            _simBadge.Text = "Simulator offline";
             _simBadge.BackColor = _secondaryColor;
         }
 
         if (e.FlightLoaded)
         {
-            _flightBadge.Text = "Flug aktiv";
+            _flightBadge.Text = "Flight active";
             _flightBadge.BackColor = Color.FromArgb(60, 76, 217, 100);
         }
         else if (e.SimConnected)
         {
-            _flightBadge.Text = "Sim läuft";
+            _flightBadge.Text = "Simulator running";
             _flightBadge.BackColor = Color.FromArgb(60, 22, 187, 215);
         }
         else
         {
-            _flightBadge.Text = "Flug inaktiv";
+            _flightBadge.Text = "Flight inactive";
             _flightBadge.BackColor = _secondaryColor;
         }
     }

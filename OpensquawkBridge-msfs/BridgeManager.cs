@@ -1,72 +1,21 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using STimer = System.Timers.Timer;
 using DotNetEnv;
-using Microsoft.FlightSimulator.SimConnect;
+using OpensquawkBridge.Abstractions;
+using STimer = System.Timers.Timer;
 
 internal sealed class BridgeManager : IDisposable
 {
-    private enum Defs
-    {
-        Latitude = 50000,
-        Longitude = 50001,
-        Altitude = 50002,
-        AirspeedIndicated = 50003,
-        AirspeedTrue = 50004,
-        GroundVelocity = 50005,
-        TurbineN1 = 50006,
-        OnGround = 50007,
-        EngineCombustion = 50008,
-        IndicatedAltitude = 50009,
-        TransponderCode = 50010,
-        AdfActiveFreq = 50011,
-        AdfStandbyFreq = 50012
-    }
-
-    private enum Reqs
-    {
-        ReqLatitude = 51000,
-        ReqLongitude = 51001,
-        ReqAltitude = 51002,
-        ReqAirspeedIndicated = 51003,
-        ReqAirspeedTrue = 51004,
-        ReqGroundVelocity = 51005,
-        ReqTurbineN1 = 51006,
-        ReqOnGround = 51007,
-        ReqEngineCombustion = 51008,
-        ReqIndicatedAltitude = 51009,
-        ReqTransponderCode = 51010,
-        ReqAdfActiveFreq = 51011,
-        ReqAdfStandbyFreq = 51012
-    }
-
-    private enum Events
-    {
-        SimStart = 52000,
-        SimStop = 52001
-    }
-
     private readonly HttpClient _http = new();
-    private SimConnect? _sim;
-    private STimer? _activeTimer;
-    private STimer? _idleTimer;
-
-    private CancellationTokenSource? _simLoopCts;
-    private Task? _simLoopTask;
-    private CancellationTokenSource? _pollCts;
-    private Task? _pollTask;
-
     private readonly string _configPath;
     private BridgeConfig _config;
 
@@ -75,32 +24,28 @@ internal sealed class BridgeManager : IDisposable
     private readonly string? _authToken;
     private readonly int _activeIntervalSec;
     private readonly int _idleIntervalSec;
-    private readonly bool _ignoreSimConnectLoadErrors;
+    private readonly bool _ignoreSimLoadErrors;
 
-    private bool _streamActive;
-    private bool _simConnected;
-    private bool _flightLoaded;
-    private bool _initializedOnce;
+    private readonly object _telemetryLock = new();
+
+    private CancellationTokenSource? _pollCts;
+    private Task? _pollTask;
+    private CancellationTokenSource? _simCts;
+
+    private readonly STimer _activeTimer;
+    private readonly STimer _idleTimer;
+
     private bool _isUserConnected;
     private string? _connectedUserName;
 
-    private DateTime _lastTs = DateTime.MinValue;
+    private SimAdapterHandle? _simHandle;
+    private bool _simConnected;
+    private bool _flightLoaded;
+    private SimTelemetry? _latestTelemetry;
+    private DateTimeOffset _latestTelemetryTimestamp;
 
-    private double _latitude;
-    private double _longitude;
-    private double _altitude;
-    private double _airspeedIndicated;
-    private double _airspeedTrue;
-    private double _groundVelocity;
-    private double _turbineN1;
-    private int _onGround;
-    private int _engineCombustion;
-    private double _indicatedAltitude;
-    private int _transponderCode;
-    private int _adfActiveFreq;
-    private double _adfStandbyFreq;
-
-    private readonly Dictionary<uint, string> _requestNames = new();
+    private string? _adapterLoadError;
+    private bool _disposed;
 
     public event EventHandler<UserStatusChangedEventArgs>? UserStatusChanged;
     public event EventHandler<SimStatusChangedEventArgs>? SimStatusChanged;
@@ -116,12 +61,12 @@ internal sealed class BridgeManager : IDisposable
 
         _bridgeBaseUrl = (Environment.GetEnvironmentVariable("BRIDGE_BASE_URL") ?? "https://opensquawk.de").TrimEnd('/');
         _telemetryUrl = Environment.GetEnvironmentVariable("SERVER_URL")
-                        ?? Environment.GetEnvironmentVariable("BRIDGE_TELEMETRY_URL")
-                        ?? $"{_bridgeBaseUrl}/api/msfs/telemetry";
+                         ?? Environment.GetEnvironmentVariable("BRIDGE_TELEMETRY_URL")
+                         ?? $"{_bridgeBaseUrl}/api/msfs/telemetry";
         _authToken = Environment.GetEnvironmentVariable("AUTH_TOKEN");
-        _activeIntervalSec = int.TryParse(Environment.GetEnvironmentVariable("ACTIVE_INTERVAL_SEC"), out var a) ? a : 30;
-        _idleIntervalSec = int.TryParse(Environment.GetEnvironmentVariable("IDLE_INTERVAL_SEC"), out var b) ? b : 120;
-        _ignoreSimConnectLoadErrors = IsTruthy(Environment.GetEnvironmentVariable("BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS"));
+        _activeIntervalSec = int.TryParse(Environment.GetEnvironmentVariable("ACTIVE_INTERVAL_SEC"), out var active) ? active : 30;
+        _idleIntervalSec = int.TryParse(Environment.GetEnvironmentVariable("IDLE_INTERVAL_SEC"), out var idle) ? idle : 120;
+        _ignoreSimLoadErrors = IsTruthy(Environment.GetEnvironmentVariable("BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS"));
 
         _http.Timeout = TimeSpan.FromSeconds(10);
         if (!string.IsNullOrWhiteSpace(_authToken))
@@ -131,25 +76,17 @@ internal sealed class BridgeManager : IDisposable
 
         ApplyTokenHeader();
 
-        _activeTimer = new STimer(_activeIntervalSec * 1000) { AutoReset = true };
-        _activeTimer.Elapsed += async (_, __) => await SendActiveTick();
+        _activeTimer = new STimer(Math.Max(1, _activeIntervalSec) * 1000)
+        {
+            AutoReset = false
+        };
+        _activeTimer.Elapsed += async (_, __) => await OnActiveTimerAsync().ConfigureAwait(false);
 
-        _idleTimer = new STimer(_idleIntervalSec * 1000) { AutoReset = true };
-        _idleTimer.Elapsed += async (_, __) => await SendIdleHeartbeat();
-
-        _requestNames[(uint)Reqs.ReqLatitude] = "Latitude";
-        _requestNames[(uint)Reqs.ReqLongitude] = "Longitude";
-        _requestNames[(uint)Reqs.ReqAltitude] = "Altitude";
-        _requestNames[(uint)Reqs.ReqAirspeedIndicated] = "IAS";
-        _requestNames[(uint)Reqs.ReqAirspeedTrue] = "TAS";
-        _requestNames[(uint)Reqs.ReqGroundVelocity] = "GS";
-        _requestNames[(uint)Reqs.ReqTurbineN1] = "N1";
-        _requestNames[(uint)Reqs.ReqOnGround] = "OnGround";
-        _requestNames[(uint)Reqs.ReqEngineCombustion] = "EngComb";
-        _requestNames[(uint)Reqs.ReqIndicatedAltitude] = "IndAlt";
-        _requestNames[(uint)Reqs.ReqTransponderCode] = "Xpdr";
-        _requestNames[(uint)Reqs.ReqAdfActiveFreq] = "ADF_Act";
-        _requestNames[(uint)Reqs.ReqAdfStandbyFreq] = "ADF_Stby";
+        _idleTimer = new STimer(Math.Max(1, _idleIntervalSec) * 1000)
+        {
+            AutoReset = false
+        };
+        _idleTimer.Elapsed += async (_, __) => await OnIdleTimerAsync().ConfigureAwait(false);
     }
 
     public string Token => _config.Token;
@@ -157,26 +94,25 @@ internal sealed class BridgeManager : IDisposable
     public string? ConnectedUserName => _connectedUserName;
     public bool SimConnected => _simConnected;
     public bool FlightLoaded => _flightLoaded;
-    public string TelemetryUrl => _telemetryUrl;
-    public string BridgeBaseUrl => _bridgeBaseUrl;
 
     public async Task InitializeAsync()
     {
-        LogMessage("OpenSquawk Bridge – MSFS Telemetrie Uploader");
-        LogMessage($"Server: {_telemetryUrl}");
-        LogMessage($"Active Interval: {_activeIntervalSec}s, Idle Interval: {_idleIntervalSec}s");
+        LogMessage("OpenSquawk Bridge ready.");
+        LogMessage($"Telemetry endpoint: {_telemetryUrl}");
+        LogMessage($"Intervals – active: {_activeIntervalSec}s, idle: {_idleIntervalSec}s");
 
-        if (_ignoreSimConnectLoadErrors)
+        if (_ignoreSimLoadErrors)
         {
-            LogMessage("⚠️ BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS aktiv – SimConnect-Ladefehler werden ignoriert.");
+            LogMessage("⚠️ BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS is enabled – the bridge will continue even if SimConnect cannot be loaded.");
         }
 
         if (string.IsNullOrWhiteSpace(_config.Token))
         {
             _config.Token = GenerateToken();
+            _config.CreatedAt = DateTimeOffset.UtcNow;
             BridgeConfigService.Save(_configPath, _config);
             ApplyTokenHeader();
-            LogMessage("🔐 Kein Token gefunden – neuer Token generiert.");
+            LogMessage("Generated new bridge token. Use the browser login to link your account.");
             TokenChanged?.Invoke(this, EventArgs.Empty);
             OpenLoginPage();
         }
@@ -186,14 +122,16 @@ internal sealed class BridgeManager : IDisposable
         }
 
         StartLoginPolling();
-        await CheckConnectionAsync(force: true);
+        await CheckConnectionAsync(force: true).ConfigureAwait(false);
+        await SendIdleHeartbeatAsync().ConfigureAwait(false);
+        RestartIdleTimer();
     }
 
     public void OpenLoginPage()
     {
         if (string.IsNullOrWhiteSpace(_config.Token))
         {
-            LogMessage("⚠️ Kein Token verfügbar, bitte zuerst generieren.");
+            LogMessage("⚠️ Cannot open login page without a token.");
             return;
         }
 
@@ -205,17 +143,17 @@ internal sealed class BridgeManager : IDisposable
                 FileName = url,
                 UseShellExecute = true
             });
-            LogMessage("🌐 Bridge-Connect-Seite im Browser geöffnet.");
+            LogMessage("🌐 Opened the browser for login.");
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ Konnte Browser nicht öffnen: {ex.Message}");
+            LogMessage($"❌ Failed to launch browser: {ex.Message}");
         }
     }
 
     public async Task ResetTokenAsync()
     {
-        await StopSimLoopAsync();
+        await StopSimAsync().ConfigureAwait(false);
 
         _config.Token = GenerateToken();
         _config.CreatedAt = DateTimeOffset.UtcNow;
@@ -226,51 +164,58 @@ internal sealed class BridgeManager : IDisposable
         _connectedUserName = null;
         UserStatusChanged?.Invoke(this, new UserStatusChangedEventArgs(false, null, _config.Token));
 
-        LogMessage("🔁 Token zurückgesetzt. Bitte im Browser neu verbinden.");
+        LogMessage("🔁 Token reset. Please login again in the browser.");
         TokenChanged?.Invoke(this, EventArgs.Empty);
         OpenLoginPage();
-        await CheckConnectionAsync(force: true);
+        await CheckConnectionAsync(force: true).ConfigureAwait(false);
     }
 
     public void Dispose()
     {
-        try { _simLoopCts?.Cancel(); } catch { }
-        try { _pollCts?.Cancel(); } catch { }
+        if (_disposed)
+        {
+            return;
+        }
 
-        try { _simLoopTask?.Wait(TimeSpan.FromSeconds(2)); } catch { }
-        try { _pollTask?.Wait(TimeSpan.FromSeconds(2)); } catch { }
+        _disposed = true;
 
-        _simLoopCts?.Dispose();
-        _pollCts?.Dispose();
+        try { _activeTimer.Stop(); } catch { }
+        try { _idleTimer.Stop(); } catch { }
+        _activeTimer.Dispose();
+        _idleTimer.Dispose();
 
-        _activeTimer?.Stop();
-        _idleTimer?.Stop();
-        _activeTimer?.Dispose();
-        _idleTimer?.Dispose();
+        if (_pollCts != null)
+        {
+            try { _pollCts.Cancel(); } catch { }
+        }
 
-        _http.Dispose();
-        try { _sim?.Dispose(); } catch { }
-    }
-
-    private void ApplyTokenHeader()
-    {
         try
         {
-            _http.DefaultRequestHeaders.Remove("X-Bridge-Token");
+            _pollTask?.Wait(TimeSpan.FromSeconds(2));
         }
         catch
         {
         }
 
-        if (!string.IsNullOrWhiteSpace(_config.Token))
+        _pollTask = null;
+        _pollCts?.Dispose();
+        _pollCts = null;
+
+        if (_simCts != null)
         {
-            _http.DefaultRequestHeaders.TryAddWithoutValidation("X-Bridge-Token", _config.Token);
+            try { _simCts.Cancel(); } catch { }
+            _simCts.Dispose();
+            _simCts = null;
         }
+
+        DetachAdapter(stop: true);
+
+        _http.Dispose();
     }
 
     private void StartLoginPolling()
     {
-        if (_pollCts != null)
+        if (_pollTask != null)
         {
             return;
         }
@@ -284,9 +229,9 @@ internal sealed class BridgeManager : IDisposable
         var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
         try
         {
-            while (await timer.WaitForNextTickAsync(token))
+            while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
             {
-                await CheckConnectionAsync();
+                await CheckConnectionAsync().ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -307,11 +252,12 @@ internal sealed class BridgeManager : IDisposable
 
         try
         {
-            var user = await FetchUserAsync();
+            var user = await FetchUserAsync().ConfigureAwait(false);
             var connected = user != null;
             var userName = user?.UserName;
 
-            var changed = connected != _isUserConnected || !string.Equals(userName, _connectedUserName, StringComparison.OrdinalIgnoreCase);
+            var changed = connected != _isUserConnected
+                           || !string.Equals(userName, _connectedUserName, StringComparison.OrdinalIgnoreCase);
 
             if (changed || force)
             {
@@ -322,593 +268,344 @@ internal sealed class BridgeManager : IDisposable
 
                 if (connected)
                 {
-                    LogMessage(userName != null ? $"✅ Benutzer verbunden: {userName}" : "✅ Benutzer verbunden");
-                    StartSimLoop();
+                    LogMessage(userName != null ? $"✅ Connected as {userName}" : "✅ User connected");
+                    await StartSimAsync().ConfigureAwait(false);
                 }
                 else
                 {
-                    LogMessage("ℹ️ Kein Benutzer verbunden");
-                    await StopSimLoopAsync();
+                    LogMessage("ℹ️ Waiting for login");
+                    await StopSimAsync().ConfigureAwait(false);
                 }
             }
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ Fehler beim Prüfen des Login-Status: {ex.Message}");
+            LogMessage($"❌ Failed to check login status: {ex.Message}");
         }
     }
 
-    private void StartSimLoop()
+    private async Task StartSimAsync()
     {
-        if (_simLoopCts != null)
+        if (_simHandle != null)
         {
             return;
         }
 
-        _simLoopCts = new CancellationTokenSource();
-        _simLoopTask = Task.Run(() => RunSimLoopAsync(_simLoopCts.Token));
-    }
-
-    private async Task StopSimLoopAsync()
-    {
-        if (_simLoopCts == null)
+        if (!SimAdapterLoader.TryLoad(out var handle, out var error))
         {
+            _adapterLoadError = error?.Message;
+            LogMessage($"⚠️ Unable to load SimConnect adapter: {_adapterLoadError ?? "unknown error"}.");
+
+            if (error != null && SimAdapterLoader.IsSimConnectLoadFailure(error))
+            {
+                if (_ignoreSimLoadErrors)
+                {
+                    LogMessage("Continuing without SimConnect (override enabled).");
+                }
+                else
+                {
+                    LogMessage("Set BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS=1 to ignore this error.");
+                }
+            }
+
             return;
         }
 
-        _simLoopCts.Cancel();
+        _adapterLoadError = null;
+        _simHandle = handle;
+        _simHandle.Adapter.Log += OnAdapterLog;
+        _simHandle.Adapter.ConnectionChanged += OnAdapterConnectionChanged;
+        _simHandle.Adapter.Telemetry += OnAdapterTelemetry;
+
+        _simCts = new CancellationTokenSource();
+
         try
         {
-            if (_simLoopTask != null)
-            {
-                await _simLoopTask;
-            }
-        }
-        catch (OperationCanceledException)
-        {
+            await _simHandle.Adapter.StartAsync(_simCts.Token).ConfigureAwait(false);
+            LogMessage("SimConnect adapter started.");
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ Fehler beim Stoppen der SimConnect-Loop: {ex.Message}");
+            HandleAdapterFailure(ex);
+        }
+    }
+
+    private async Task StopSimAsync()
+    {
+        StopActiveTimer();
+        RestartIdleTimer();
+
+        if (_simHandle == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _simCts?.Cancel();
+            await _simHandle.Adapter.StopAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"⚠️ Error while stopping SimConnect adapter: {ex.Message}");
         }
         finally
         {
-            _simLoopTask = null;
-            _simLoopCts.Dispose();
-            _simLoopCts = null;
-            CleanupSim();
+            _simCts?.Dispose();
+            _simCts = null;
+            DetachAdapter(stop: false);
         }
     }
 
-    private void CleanupSim()
+    private void HandleAdapterFailure(Exception ex)
     {
-        try { _activeTimer?.Stop(); } catch { }
-        try { _idleTimer?.Stop(); } catch { }
-        StopStream();
-        SetSimConnected(false);
-        SetFlightLoaded(false);
+        _adapterLoadError = ex.Message;
+        LogMessage($"⚠️ SimConnect failed: {ex.Message}");
 
-        if (_sim != null)
+        var loadFailure = SimAdapterLoader.IsSimConnectLoadFailure(ex);
+        if (loadFailure)
         {
-            try { _sim.Dispose(); } catch { }
-            _sim = null;
-        }
-
-        _initializedOnce = false;
-    }
-
-    private async Task RunSimLoopAsync(CancellationToken token)
-    {
-        try
-        {
-            await InitializeSimConnect();
-            await SendIdleHeartbeat();
-            _idleTimer?.Start();
-            LogMessage("Warte auf SimConnect-Ereignisse...");
-
-            while (!token.IsCancellationRequested)
+            if (_ignoreSimLoadErrors)
             {
-                try
-                {
-                    _sim?.ReceiveMessage();
-                }
-                catch (Exception ex)
-                {
-                    LogMessage($"❌ ReceiveMessage Fehler: {ex.Message}");
-                    await Task.Delay(2000, token);
-
-                    if (!_simConnected)
-                    {
-                        try
-                        {
-                            await ReconnectSimConnect();
-                        }
-                        catch (Exception initEx)
-                        {
-                            LogMessage($"❌ Reconnection fehlgeschlagen: {initEx.Message}");
-                            await Task.Delay(5000, token);
-                        }
-                    }
-                }
-
-                await Task.Delay(50, token);
+                LogMessage("BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS is enabled – running without simulator.");
+            }
+            else
+            {
+                LogMessage("Set BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS=1 to continue without the simulator.");
             }
         }
-        catch (OperationCanceledException)
+
+        if (_simCts != null)
         {
+            try { _simCts.Cancel(); } catch { }
+            _simCts.Dispose();
+            _simCts = null;
+        }
+
+        DetachAdapter(stop: false);
+    }
+
+    private void DetachAdapter(bool stop)
+    {
+        if (_simHandle == null)
+        {
+            if (_simConnected || _flightLoaded)
+            {
+                _simConnected = false;
+                _flightLoaded = false;
+                RaiseSimStatusChanged();
+            }
+            return;
+        }
+
+        try
+        {
+            if (stop)
+            {
+                _simHandle.Adapter.StopAsync().GetAwaiter().GetResult();
+            }
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ SimConnect Initialisierung fehlgeschlagen: {ex.Message}");
-            LogMessage("Läuft im Offline-Modus...");
-
-            try
-            {
-                await SendIdleHeartbeat();
-                _idleTimer?.Start();
-
-                while (!token.IsCancellationRequested)
-                {
-                    await Task.Delay(1000, token);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-            }
+            LogMessage($"⚠️ Error stopping SimConnect adapter: {ex.Message}");
         }
         finally
         {
-            try { _idleTimer?.Stop(); } catch { }
-            try { _activeTimer?.Stop(); } catch { }
-        }
-    }
+            try { _simHandle.Adapter.Log -= OnAdapterLog; } catch { }
+            try { _simHandle.Adapter.ConnectionChanged -= OnAdapterConnectionChanged; } catch { }
+            try { _simHandle.Adapter.Telemetry -= OnAdapterTelemetry; } catch { }
 
-    private Task InitializeSimConnect()
-    {
-        try
-        {
-            string connectionName = $"OpenSquawkBridge_{Environment.ProcessId}";
-            _sim = new SimConnect(connectionName, IntPtr.Zero, 0, null, 0);
+            try { _simHandle.Dispose(); } catch { }
+            _simHandle = null;
 
-            _sim.OnRecvOpen += OnRecvOpen;
-            _sim.OnRecvQuit += OnRecvQuit;
-            _sim.OnRecvEvent += OnRecvEvent;
-            _sim.OnRecvSimobjectData += OnRecvSimobjectData;
-            _sim.OnRecvException += OnRecvException;
-
-            LogMessage($"SimConnect initialisiert: {connectionName}");
-            return Task.CompletedTask;
-        }
-        catch (Exception ex) when (_ignoreSimConnectLoadErrors && IsSimConnectLoadFailure(ex))
-        {
-            HandleSimConnectLoadFailure(ex);
-            return Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"❌ SimConnect Initialisierung Fehler: {ex.Message}");
-            SetSimConnected(false);
-            throw;
-        }
-    }
-
-    private async Task ReconnectSimConnect()
-    {
-        try
-        {
-            if (_sim != null)
+            if (_simConnected || _flightLoaded)
             {
-                try { _sim.Dispose(); } catch { }
-                _sim = null;
-            }
-
-            SetSimConnected(false);
-            await Task.Delay(1000);
-
-            await InitializeSimConnect();
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"❌ Reconnect Fehler: {ex.Message}");
-            throw;
-        }
-    }
-
-    private void RegisterDataDefinitionsOnce()
-    {
-        if (_sim == null || _initializedOnce)
-        {
-            return;
-        }
-
-        try
-        {
-            LogMessage("Registriere einzelne Datendefinitionen...");
-
-            _sim.AddToDataDefinition(Defs.Latitude, "PLANE LATITUDE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.Latitude);
-
-            _sim.AddToDataDefinition(Defs.Longitude, "PLANE LONGITUDE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.Longitude);
-
-            _sim.AddToDataDefinition(Defs.Altitude, "PLANE ALTITUDE", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.Altitude);
-
-            _sim.AddToDataDefinition(Defs.AirspeedIndicated, "AIRSPEED INDICATED", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.AirspeedIndicated);
-
-            _sim.AddToDataDefinition(Defs.AirspeedTrue, "AIRSPEED TRUE", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.AirspeedTrue);
-
-            _sim.AddToDataDefinition(Defs.GroundVelocity, "GROUND VELOCITY", "meters per second", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.GroundVelocity);
-
-            _sim.AddToDataDefinition(Defs.TurbineN1, "TURB ENG N1:1", "percent", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.TurbineN1);
-
-            _sim.AddToDataDefinition(Defs.OnGround, "SIM ON GROUND", "Bool", SIMCONNECT_DATATYPE.INT32, 0, 0);
-            _sim.RegisterDataDefineStruct<int>(Defs.OnGround);
-
-            _sim.AddToDataDefinition(Defs.EngineCombustion, "GENERAL ENG COMBUSTION:1", "Bool", SIMCONNECT_DATATYPE.INT32, 0, 0);
-            _sim.RegisterDataDefineStruct<int>(Defs.EngineCombustion);
-
-            _sim.AddToDataDefinition(Defs.IndicatedAltitude, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.IndicatedAltitude);
-
-            _sim.AddToDataDefinition(Defs.TransponderCode, "TRANSPONDER CODE:2", "BCD16", SIMCONNECT_DATATYPE.INT32, 0, 0);
-            _sim.RegisterDataDefineStruct<int>(Defs.TransponderCode);
-
-            _sim.AddToDataDefinition(Defs.AdfActiveFreq, "ADF ACTIVE FREQUENCY:1", "Frequency ADF BCD32", SIMCONNECT_DATATYPE.INT32, 0, 0);
-            _sim.RegisterDataDefineStruct<int>(Defs.AdfActiveFreq);
-
-            _sim.AddToDataDefinition(Defs.AdfStandbyFreq, "ADF STANDBY FREQUENCY:1", "Hz", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
-            _sim.RegisterDataDefineStruct<double>(Defs.AdfStandbyFreq);
-
-            _sim.SubscribeToSystemEvent(Events.SimStart, "SimStart");
-            _sim.SubscribeToSystemEvent(Events.SimStop, "SimStop");
-
-            _initializedOnce = true;
-            LogMessage("✓ Alle Datendefinitionen einzeln registriert");
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"❌ Fehler beim Registrieren der Datendefinitionen: {ex.Message}");
-        }
-    }
-
-    private void OnRecvOpen(SimConnect sender, SIMCONNECT_RECV_OPEN data)
-    {
-        LogMessage("✓ SimConnect verbunden");
-        SetSimConnected(true);
-        RegisterDataDefinitionsOnce();
-    }
-
-    private async void OnRecvQuit(SimConnect sender, SIMCONNECT_RECV data)
-    {
-        LogMessage("❌ Simulator beendet");
-        SetSimConnected(false);
-        SetFlightLoaded(false);
-        StopStream();
-        ToIdleMode();
-        await SendIdleHeartbeat();
-    }
-
-    private async void OnRecvEvent(SimConnect sender, SIMCONNECT_RECV_EVENT data)
-    {
-        try
-        {
-            if (data.uEventID == (uint)Events.SimStart)
-            {
-                LogMessage("🛫 Flug gestartet → Aktiver Modus");
-                SetFlightLoaded(true);
-                StartStream();
-                _idleTimer?.Stop();
-                await Task.Delay(3000);
-                _activeTimer?.Start();
-                await SendActiveTick();
-            }
-            else if (data.uEventID == (uint)Events.SimStop)
-            {
-                LogMessage("🛬 Flug beendet → Idle Modus");
-                SetFlightLoaded(false);
-                StopStream();
-                ToIdleMode();
-                await SendIdleHeartbeat();
+                _simConnected = false;
+                _flightLoaded = false;
+                RaiseSimStatusChanged();
             }
         }
-        catch (Exception ex)
+    }
+
+    private void OnAdapterLog(object? sender, LogMessageEventArgs e)
+    {
+        LogMessage(e.Message);
+    }
+
+    private void OnAdapterConnectionChanged(object? sender, SimConnectionChangedEventArgs e)
+    {
+        _simConnected = e.IsConnected;
+        _flightLoaded = e.IsFlightLoaded;
+        RaiseSimStatusChanged();
+
+        if (_flightLoaded)
         {
-            LogMessage($"❌ Event-Handler Fehler: {ex.Message}");
+            StopIdleTimer();
+            RestartActiveTimer();
+            _ = SendActiveTickAsync();
+        }
+        else
+        {
+            StopActiveTimer();
+            RestartIdleTimer();
+            _ = SendIdleHeartbeatAsync();
         }
     }
 
-    private void OnRecvSimobjectData(SimConnect sender, SIMCONNECT_RECV_SIMOBJECT_DATA data)
+    private void OnAdapterTelemetry(object? sender, SimTelemetryEventArgs e)
+    {
+        lock (_telemetryLock)
+        {
+            _latestTelemetry = e.Telemetry;
+            _latestTelemetryTimestamp = e.Telemetry.Timestamp;
+        }
+    }
+
+    private async Task OnActiveTimerAsync()
     {
         try
         {
-            if (data.dwData is not object[] arr || arr.Length == 0)
+            await SendActiveTickAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            if (!_disposed && _flightLoaded)
             {
-                return;
+                RestartActiveTimer();
             }
+        }
+    }
 
-            var requestId = data.dwRequestID;
-
-            switch ((Reqs)requestId)
+    private async Task OnIdleTimerAsync()
+    {
+        try
+        {
+            await SendIdleHeartbeatAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            if (!_disposed)
             {
-                case Reqs.ReqLatitude:
-                    if (arr[0] is double lat)
-                    {
-                        _latitude = lat;
-                        LogMessage($"📍 Latitude: {lat:F6}");
-                    }
-                    break;
-
-                case Reqs.ReqLongitude:
-                    if (arr[0] is double lon)
-                    {
-                        _longitude = lon;
-                        LogMessage($"📍 Longitude: {lon:F6}");
-                    }
-                    break;
-
-                case Reqs.ReqAltitude:
-                    if (arr[0] is double alt)
-                    {
-                        _altitude = alt;
-                        LogMessage($"⛰️ Altitude: {alt:F0}ft");
-                    }
-                    break;
-
-                case Reqs.ReqAirspeedIndicated:
-                    if (arr[0] is double ias)
-                    {
-                        _airspeedIndicated = ias;
-                        LogMessage($"🏎️ IAS: {ias:F0}kt");
-                    }
-                    break;
-
-                case Reqs.ReqAirspeedTrue:
-                    if (arr[0] is double tas)
-                    {
-                        _airspeedTrue = tas;
-                    }
-                    break;
-
-                case Reqs.ReqGroundVelocity:
-                    if (arr[0] is double gs)
-                    {
-                        _groundVelocity = gs;
-                    }
-                    break;
-
-                case Reqs.ReqTurbineN1:
-                    if (arr[0] is double n1)
-                    {
-                        _turbineN1 = n1;
-                    }
-                    break;
-
-                case Reqs.ReqOnGround:
-                    if (arr[0] is int gnd)
-                    {
-                        _onGround = gnd;
-                        LogMessage($"🛬 On Ground: {gnd != 0}");
-                    }
-                    break;
-
-                case Reqs.ReqEngineCombustion:
-                    if (arr[0] is int eng)
-                    {
-                        _engineCombustion = eng;
-                    }
-                    break;
-
-                case Reqs.ReqIndicatedAltitude:
-                    if (arr[0] is double indAlt)
-                    {
-                        _indicatedAltitude = indAlt;
-                    }
-                    break;
-
-                case Reqs.ReqTransponderCode:
-                    if (arr[0] is int xpdr)
-                    {
-                        _transponderCode = xpdr;
-                        LogMessage($"📡 Transponder: {xpdr:0000}");
-                    }
-                    break;
-
-                case Reqs.ReqAdfActiveFreq:
-                    if (arr[0] is int adfAct)
-                    {
-                        _adfActiveFreq = adfAct;
-                        LogMessage($"📻 ADF Active: {adfAct}");
-                    }
-                    break;
-
-                case Reqs.ReqAdfStandbyFreq:
-                    if (arr[0] is double adfStby)
-                    {
-                        _adfStandbyFreq = adfStby;
-                        LogMessage($"📻 ADF Standby: {adfStby:F0}Hz");
-                    }
-                    break;
+                RestartIdleTimer();
             }
-
-            _lastTs = DateTime.UtcNow;
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"❌ SimObject-Daten Fehler: {ex.Message}");
         }
     }
 
-    private void OnRecvException(SimConnect sender, SIMCONNECT_RECV_EXCEPTION data)
+    private void RestartActiveTimer()
     {
-        var exception = (SIMCONNECT_EXCEPTION)data.dwException;
-        LogMessage($"⚠️ SimConnect Exception: {exception}");
-
-        if (exception == SIMCONNECT_EXCEPTION.DUPLICATE_ID)
-        {
-            LogMessage("   (DUPLICATE_ID ignoriert)");
-        }
-    }
-
-    private void StartStream()
-    {
-        if (_sim == null || _streamActive || !_initializedOnce)
-        {
-            return;
-        }
-
         try
         {
-            _sim.RequestDataOnSimObject(Reqs.ReqLatitude, Defs.Latitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqLongitude, Defs.Longitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqAltitude, Defs.Altitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqAirspeedIndicated, Defs.AirspeedIndicated, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqAirspeedTrue, Defs.AirspeedTrue, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqGroundVelocity, Defs.GroundVelocity, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqTurbineN1, Defs.TurbineN1, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqOnGround, Defs.OnGround, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqEngineCombustion, Defs.EngineCombustion, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqIndicatedAltitude, Defs.IndicatedAltitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqTransponderCode, Defs.TransponderCode, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqAdfActiveFreq, Defs.AdfActiveFreq, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.ReqAdfStandbyFreq, Defs.AdfStandbyFreq, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-
-            _streamActive = true;
-            _lastTs = DateTime.UtcNow;
-            LogMessage("📡 Datastream gestartet");
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"❌ Stream-Start Fehler: {ex.Message}");
-        }
-    }
-
-    private void StopStream()
-    {
-        if (_sim == null || !_streamActive)
-        {
-            return;
-        }
-
-        try
-        {
-            _sim.RequestDataOnSimObject(Reqs.ReqLatitude, Defs.Latitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqLongitude, Defs.Longitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqAltitude, Defs.Altitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqAirspeedIndicated, Defs.AirspeedIndicated, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqAirspeedTrue, Defs.AirspeedTrue, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqGroundVelocity, Defs.GroundVelocity, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqTurbineN1, Defs.TurbineN1, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqOnGround, Defs.OnGround, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqEngineCombustion, Defs.EngineCombustion, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqIndicatedAltitude, Defs.IndicatedAltitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqTransponderCode, Defs.TransponderCode, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqAdfActiveFreq, Defs.AdfActiveFreq, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.ReqAdfStandbyFreq, Defs.AdfStandbyFreq, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-
-            _streamActive = false;
-            _lastTs = DateTime.MinValue;
-            LogMessage("📡 Alle Datenstreams gestoppt");
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"❌ Stream-Stop Fehler: {ex.Message}");
-        }
-    }
-
-    private void ToIdleMode()
-    {
-        try { _activeTimer?.Stop(); } catch { }
-        try
-        {
-            if (_idleTimer != null && !_idleTimer.Enabled)
-            {
-                _idleTimer.Start();
-                LogMessage("💤 Idle-Modus aktiviert");
-            }
+            _activeTimer.Stop();
+            _activeTimer.Interval = Math.Max(1, _activeIntervalSec) * 1000;
+            _activeTimer.Start();
         }
         catch
         {
         }
     }
 
-    private async Task SendActiveTick()
+    private void StopActiveTimer()
+    {
+        try { _activeTimer.Stop(); } catch { }
+    }
+
+    private void RestartIdleTimer()
+    {
+        try
+        {
+            _idleTimer.Stop();
+            _idleTimer.Interval = Math.Max(1, _idleIntervalSec) * 1000;
+            _idleTimer.Start();
+        }
+        catch
+        {
+        }
+    }
+
+    private void StopIdleTimer()
+    {
+        try { _idleTimer.Stop(); } catch { }
+    }
+
+    private async Task SendActiveTickAsync()
     {
         try
         {
             if (!_simConnected || !_flightLoaded)
             {
-                LogMessage("⚠️ Simulator nicht verbunden oder kein Flug geladen");
+                LogMessage("Skipping active tick because the simulator is not ready.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(_config.Token))
             {
-                LogMessage("⚠️ Kein Token verfügbar – aktiver Tick wird übersprungen");
+                LogMessage("Skipping active tick because no token is available.");
                 return;
             }
 
-            var age = DateTime.UtcNow - _lastTs;
-            if (age > TimeSpan.FromSeconds(10))
+            SimTelemetry? telemetry;
+            DateTimeOffset timestamp;
+
+            lock (_telemetryLock)
             {
-                LogMessage($"⚠️ Keine frischen Daten (Alter: {age.TotalSeconds:F1}s)");
-                return;
+                telemetry = _latestTelemetry;
+                timestamp = _latestTelemetryTimestamp;
             }
 
-            if (double.IsNaN(_latitude) || double.IsNaN(_longitude) ||
-                double.IsInfinity(_latitude) || double.IsInfinity(_longitude) ||
-                Math.Abs(_latitude) > 90 || Math.Abs(_longitude) > 180)
+            if (telemetry == null)
             {
-                LogMessage($"⚠️ Ungültige Koordinaten: lat={_latitude:F6}, lon={_longitude:F6}");
+                LogMessage("No telemetry available yet – waiting for data.");
                 return;
             }
 
-            var gsKt = _groundVelocity * 1.943844;
-            bool engOn = (_engineCombustion != 0) || (_turbineN1 > 5.0);
+            if (DateTimeOffset.UtcNow - timestamp > TimeSpan.FromSeconds(10))
+            {
+                LogMessage("Telemetry data is stale – skipping active tick.");
+                return;
+            }
+
+            if (!IsValidCoordinate(telemetry.Latitude, -90, 90) || !IsValidCoordinate(telemetry.Longitude, -180, 180))
+            {
+                LogMessage($"Invalid coordinates lat={telemetry.Latitude:F6}, lon={telemetry.Longitude:F6}");
+                return;
+            }
 
             var payload = new
             {
                 token = _config.Token,
                 status = "active",
                 ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                latitude = Math.Round(_latitude, 6),
-                longitude = Math.Round(_longitude, 6),
-                altitude_ft_true = Math.Round(_altitude, 0),
-                altitude_ft_indicated = Math.Round(_indicatedAltitude, 0),
-                ias_kt = Math.Round(_airspeedIndicated, 1),
-                tas_kt = Math.Round(_airspeedTrue, 1),
-                groundspeed_kt = Math.Round(gsKt, 1),
-                on_ground = _onGround != 0,
-                eng_on = engOn,
-                n1_pct = Math.Round(_turbineN1, 1),
-                transponder_code = _transponderCode,
-                adf_active_freq = _adfActiveFreq,
-                adf_standby_freq_hz = Math.Round(_adfStandbyFreq, 0)
+                latitude = Math.Round(telemetry.Latitude, 6),
+                longitude = Math.Round(telemetry.Longitude, 6),
+                altitude_ft_true = Math.Round(telemetry.Altitude, 0),
+                altitude_ft_indicated = Math.Round(telemetry.IndicatedAltitude, 0),
+                ias_kt = Math.Round(telemetry.AirspeedIndicated, 1),
+                tas_kt = Math.Round(telemetry.AirspeedTrue, 1),
+                groundspeed_kt = Math.Round(telemetry.GroundVelocity * 1.943844, 1),
+                on_ground = telemetry.OnGround,
+                eng_on = telemetry.EngineCombustion || telemetry.TurbineN1 > 5,
+                n1_pct = Math.Round(telemetry.TurbineN1, 1),
+                transponder_code = telemetry.TransponderCode,
+                adf_active_freq = telemetry.AdfActiveFrequency,
+                adf_standby_freq_hz = Math.Round(telemetry.AdfStandbyFrequency, 0)
             };
 
-            LogMessage($"🚁 AKTIV: lat={payload.latitude:F6} lon={payload.longitude:F6} " +
-                       $"alt={payload.altitude_ft_true:F0}ft gs={payload.groundspeed_kt:F1}kt " +
-                       $"engine={engOn} xpdr={_transponderCode:0000}");
+            LogMessage($"Active tick lat={payload.latitude:F6} lon={payload.longitude:F6} alt={payload.altitude_ft_true:F0}ft gs={payload.groundspeed_kt:F1}kt");
 
-            await PostJson(payload);
+            await PostJsonAsync(payload).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ Active tick Fehler: {ex.Message}");
+            LogMessage($"❌ Active tick failed: {ex.Message}");
         }
     }
 
-    private async Task SendIdleHeartbeat()
+    private async Task SendIdleHeartbeatAsync()
     {
         try
         {
             if (string.IsNullOrWhiteSpace(_config.Token))
             {
-                LogMessage("⚠️ Kein Token verfügbar – Idle-Heartbeat wird übersprungen");
                 return;
             }
 
@@ -921,69 +618,52 @@ internal sealed class BridgeManager : IDisposable
                 flight_loaded = _flightLoaded
             };
 
-            string statusIcon = _simConnected ? (_flightLoaded ? "🛫" : "🎮") : "❌";
-            LogMessage($"{statusIcon} Idle heartbeat (connected: {_simConnected}, flight: {_flightLoaded})");
-
-            await PostJson(payload);
+            await PostJsonAsync(payload).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ Idle heartbeat Fehler: {ex.Message}");
+            LogMessage($"❌ Idle heartbeat failed: {ex.Message}");
         }
     }
 
-    private async Task PostJson(object obj)
+    private async Task PostJsonAsync(object payload)
     {
         if (string.IsNullOrWhiteSpace(_telemetryUrl))
         {
-            LogMessage("⚠️ Keine Telemetrie-URL definiert");
+            LogMessage("⚠️ No telemetry URL configured.");
             return;
         }
 
+        var json = JsonSerializer.Serialize(payload);
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+
         try
         {
-            var json = JsonSerializer.Serialize(obj);
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            using var request = new HttpRequestMessage(HttpMethod.Post, _telemetryUrl)
+            using var response = await _http.PostAsync(_telemetryUrl, content).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
             {
-                Content = content
-            };
-
-            using var resp = await _http.SendAsync(request);
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                LogMessage($"❌ HTTP {resp.StatusCode}: {resp.ReasonPhrase}");
-            }
-            else
-            {
-                LogMessage("✓ Daten erfolgreich gesendet");
+                LogMessage($"⚠️ Telemetry POST failed: {(int)response.StatusCode} {response.ReasonPhrase}");
             }
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ HTTP POST Fehler: {ex.Message}");
+            LogMessage($"❌ Telemetry POST error: {ex.Message}");
         }
     }
 
     private async Task<BridgeUser?> FetchUserAsync()
     {
-        if (string.IsNullOrWhiteSpace(_config.Token))
-        {
-            return null;
-        }
-
         var url = $"{_bridgeBaseUrl}/bridge/me?token={Uri.EscapeDataString(_config.Token)}";
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
 
-        using var response = await _http.SendAsync(request);
+        using var response = await _http.SendAsync(request).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
             return null;
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync();
-        using var document = await JsonDocument.ParseAsync(stream);
+        await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+        using var document = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
         var root = document.RootElement;
 
         if (root.TryGetProperty("connected", out var connectedProp) && connectedProp.ValueKind == JsonValueKind.False)
@@ -1007,56 +687,36 @@ internal sealed class BridgeManager : IDisposable
             return null;
         }
 
-        string? value = TryGetString(element, "username")
-                        ?? TryGetString(element, "userName")
-                        ?? TryGetString(element, "name")
-                        ?? TryGetString(element, "displayName")
-                        ?? TryGetString(element, "email");
-
-        return string.IsNullOrWhiteSpace(value) ? null : value;
+        return TryGetString(element, "username")
+               ?? TryGetString(element, "userName")
+               ?? TryGetString(element, "name")
+               ?? TryGetString(element, "displayName")
+               ?? TryGetString(element, "email");
     }
 
     private static string? TryGetString(JsonElement element, string propertyName)
     {
-        if (element.TryGetProperty(propertyName, out var property))
+        if (element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String)
         {
-            if (property.ValueKind == JsonValueKind.String)
-            {
-                return property.GetString();
-            }
+            return property.GetString();
         }
 
         return null;
     }
 
-    private void HandleSimConnectLoadFailure(Exception ex)
+    private void ApplyTokenHeader()
     {
-        LogMessage($"⚠️ SimConnect konnte nicht geladen werden ({ex.GetType().Name}: {ex.Message}).");
-        LogMessage("   BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS aktiv – Bridge läuft ohne Simulator-Anbindung.");
-        SetSimConnected(false);
-        SetFlightLoaded(false);
-        _sim = null;
-        _streamActive = false;
-        _initializedOnce = false;
-    }
-
-    private static bool IsSimConnectLoadFailure(Exception ex)
-    {
-        switch (ex)
+        try
         {
-            case BadImageFormatException:
-            case DllNotFoundException:
-                return true;
-            case FileLoadException fle when fle.HResult == unchecked((int)0x8007000B):
-                return true;
-            case FileLoadException fle when fle.InnerException != null:
-                return IsSimConnectLoadFailure(fle.InnerException);
-            case TypeInitializationException tie when tie.InnerException != null:
-                return IsSimConnectLoadFailure(tie.InnerException);
-            case TargetInvocationException tie when tie.InnerException != null:
-                return IsSimConnectLoadFailure(tie.InnerException);
-            default:
-                return ex.InnerException != null && IsSimConnectLoadFailure(ex.InnerException);
+            _http.DefaultRequestHeaders.Remove("X-Bridge-Token");
+        }
+        catch
+        {
+        }
+
+        if (!string.IsNullOrWhiteSpace(_config.Token))
+        {
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("X-Bridge-Token", _config.Token);
         }
     }
 
@@ -1068,7 +728,6 @@ internal sealed class BridgeManager : IDisposable
         }
 
         value = value.Trim();
-
         return value.Equals("1", StringComparison.OrdinalIgnoreCase)
                || value.Equals("true", StringComparison.OrdinalIgnoreCase)
                || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
@@ -1083,22 +742,12 @@ internal sealed class BridgeManager : IDisposable
         return Convert.ToBase64String(buffer).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 
-    private void SetSimConnected(bool connected)
+    private static bool IsValidCoordinate(double value, double min, double max)
     {
-        if (_simConnected != connected)
-        {
-            _simConnected = connected;
-            RaiseSimStatusChanged();
-        }
-    }
-
-    private void SetFlightLoaded(bool loaded)
-    {
-        if (_flightLoaded != loaded)
-        {
-            _flightLoaded = loaded;
-            RaiseSimStatusChanged();
-        }
+        return !double.IsNaN(value)
+               && !double.IsInfinity(value)
+               && value >= min
+               && value <= max;
     }
 
     private void RaiseSimStatusChanged()
