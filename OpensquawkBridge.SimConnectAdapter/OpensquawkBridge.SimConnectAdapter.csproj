@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>false</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpensquawkBridge.Abstractions\OpensquawkBridge.Abstractions.csproj" />
+    <Reference Include="Microsoft.FlightSimulator.SimConnect">
+      <HintPath>..\OpensquawkBridge-msfs\libs\Microsoft.FlightSimulator.SimConnect.dll</HintPath>
+      <Private>true</Private>
+      <CopyLocal>true</CopyLocal>
+    </Reference>
+    <None Include="..\OpensquawkBridge-msfs\libs\SimConnect.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>
