@@ -20,7 +20,9 @@ internal sealed class BridgeManager : IDisposable
     private BridgeConfig _config;
 
     private readonly string _bridgeBaseUrl;
-    private readonly string _telemetryUrl;
+    private readonly string _meUrl;
+    private readonly string _statusUrl;
+    private readonly string _dataUrl;
     private readonly string? _authToken;
     private readonly int _activeIntervalSec;
     private readonly int _idleIntervalSec;
@@ -60,9 +62,14 @@ internal sealed class BridgeManager : IDisposable
         _config = BridgeConfigService.Load(_configPath);
 
         _bridgeBaseUrl = (Environment.GetEnvironmentVariable("BRIDGE_BASE_URL") ?? "https://opensquawk.de").TrimEnd('/');
-        _telemetryUrl = Environment.GetEnvironmentVariable("SERVER_URL")
-                         ?? Environment.GetEnvironmentVariable("BRIDGE_TELEMETRY_URL")
-                         ?? $"{_bridgeBaseUrl}/api/msfs/telemetry";
+        _meUrl = Environment.GetEnvironmentVariable("BRIDGE_ME_URL")
+                  ?? $"{_bridgeBaseUrl}/api/bridge/me";
+        _statusUrl = Environment.GetEnvironmentVariable("BRIDGE_STATUS_URL")
+                      ?? $"{_bridgeBaseUrl}/api/bridge/status";
+        _dataUrl = Environment.GetEnvironmentVariable("SERVER_URL")
+                    ?? Environment.GetEnvironmentVariable("BRIDGE_TELEMETRY_URL")
+                    ?? Environment.GetEnvironmentVariable("BRIDGE_DATA_URL")
+                    ?? $"{_bridgeBaseUrl}/api/bridge/data";
         _authToken = Environment.GetEnvironmentVariable("AUTH_TOKEN");
         _activeIntervalSec = int.TryParse(Environment.GetEnvironmentVariable("ACTIVE_INTERVAL_SEC"), out var active) ? active : 30;
         _idleIntervalSec = int.TryParse(Environment.GetEnvironmentVariable("IDLE_INTERVAL_SEC"), out var idle) ? idle : 120;
@@ -98,7 +105,8 @@ internal sealed class BridgeManager : IDisposable
     public async Task InitializeAsync()
     {
         LogMessage("OpenSquawk Bridge ready.");
-        LogMessage($"Telemetry endpoint: {_telemetryUrl}");
+        LogMessage($"Status endpoint: {_statusUrl}");
+        LogMessage($"Data endpoint: {_dataUrl}");
         LogMessage($"Intervals – active: {_activeIntervalSec}s, idle: {_idleIntervalSec}s");
 
         if (_ignoreSimLoadErrors)
@@ -437,6 +445,7 @@ internal sealed class BridgeManager : IDisposable
         _simConnected = e.IsConnected;
         _flightLoaded = e.IsFlightLoaded;
         RaiseSimStatusChanged();
+        _ = SendStatusUpdateAsync();
 
         if (_flightLoaded)
         {
@@ -592,7 +601,8 @@ internal sealed class BridgeManager : IDisposable
 
             LogMessage($"Active tick lat={payload.latitude:F6} lon={payload.longitude:F6} alt={payload.altitude_ft_true:F0}ft gs={payload.groundspeed_kt:F1}kt");
 
-            await PostJsonAsync(payload).ConfigureAwait(false);
+            await SendStatusUpdateAsync().ConfigureAwait(false);
+            await PostJsonAsync(_dataUrl, payload, "Telemetry").ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -604,21 +614,7 @@ internal sealed class BridgeManager : IDisposable
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(_config.Token))
-            {
-                return;
-            }
-
-            var payload = new
-            {
-                token = _config.Token,
-                status = "idle",
-                ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                sim_connected = _simConnected,
-                flight_loaded = _flightLoaded
-            };
-
-            await PostJsonAsync(payload).ConfigureAwait(false);
+            await SendStatusUpdateAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -626,11 +622,28 @@ internal sealed class BridgeManager : IDisposable
         }
     }
 
-    private async Task PostJsonAsync(object payload)
+    private Task SendStatusUpdateAsync()
     {
-        if (string.IsNullOrWhiteSpace(_telemetryUrl))
+        if (string.IsNullOrWhiteSpace(_config.Token))
         {
-            LogMessage("⚠️ No telemetry URL configured.");
+            return Task.CompletedTask;
+        }
+
+        var payload = new
+        {
+            token = _config.Token,
+            simConnected = _simConnected,
+            flightActive = _flightLoaded
+        };
+
+        return PostJsonAsync(_statusUrl, payload, "Status");
+    }
+
+    private async Task PostJsonAsync(string? url, object payload, string context)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            LogMessage($"⚠️ No {context} URL configured.");
             return;
         }
 
@@ -639,21 +652,28 @@ internal sealed class BridgeManager : IDisposable
 
         try
         {
-            using var response = await _http.PostAsync(_telemetryUrl, content).ConfigureAwait(false);
+            using var response = await _http.PostAsync(url, content).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                LogMessage($"⚠️ Telemetry POST failed: {(int)response.StatusCode} {response.ReasonPhrase}");
+                LogMessage($"⚠️ {context} POST failed: {(int)response.StatusCode} {response.ReasonPhrase}");
             }
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ Telemetry POST error: {ex.Message}");
+            LogMessage($"❌ {context} POST error: {ex.Message}");
         }
     }
 
     private async Task<BridgeUser?> FetchUserAsync()
     {
-        var url = $"{_bridgeBaseUrl}/bridge/me?token={Uri.EscapeDataString(_config.Token)}";
+        if (string.IsNullOrWhiteSpace(_meUrl))
+        {
+            LogMessage("⚠️ No user endpoint configured.");
+            return null;
+        }
+
+        var separator = _meUrl.Contains('?', StringComparison.Ordinal) ? '&' : '?';
+        var url = $"{_meUrl}{separator}token={Uri.EscapeDataString(_config.Token)}";
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
 
         using var response = await _http.SendAsync(request).ConfigureAwait(false);

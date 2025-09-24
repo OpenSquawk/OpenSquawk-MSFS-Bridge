@@ -35,7 +35,8 @@ internal sealed class MainForm : Form
         ForeColor = Color.White;
         Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point);
         Padding = new Padding(32, 32, 32, 24);
-        MinimumSize = new Size(580, 640);
+        ClientSize = new Size(900, 640);
+        MinimumSize = new Size(820, 640);
         DoubleBuffered = true;
 
         var titleLabel = new Label
