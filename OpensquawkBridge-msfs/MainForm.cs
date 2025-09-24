@@ -128,7 +128,8 @@ internal sealed class MainForm : Form
             FlowDirection = FlowDirection.LeftToRight,
             AutoSize = true,
             WrapContents = false,
-            Margin = new Padding(0, 0, 0, 20)
+            Margin = new Padding(0, 0, 0, 20),
+            BackColor = Color.Transparent
         };
         buttonPanel.Controls.Add(_connectButton);
         buttonPanel.Controls.Add(_resetButton);
@@ -366,19 +367,31 @@ internal sealed class RoundedButton : Button
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
         DoubleBuffered = true;
+        SetStyle(ControlStyles.AllPaintingInWmPaint
+                 | ControlStyles.OptimizedDoubleBuffer
+                 | ControlStyles.UserPaint
+                 | ControlStyles.ResizeRedraw, true);
+        UpdateStyles();
     }
 
     protected override void OnPaint(PaintEventArgs pevent)
     {
         pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        pevent.Graphics.Clear(Color.Transparent);
 
-        using var path = CreateRoundPath(ClientRectangle, CornerRadius);
-        using var brush = new SolidBrush(BackColor);
+        var backgroundColor = GetEffectiveBackColor();
+        using (var backgroundBrush = new SolidBrush(backgroundColor))
+        {
+            pevent.Graphics.FillRectangle(backgroundBrush, pevent.ClipRectangle);
+        }
+
+        var buttonRect = new Rectangle(0, 0, Width - 1, Height - 1);
+        using var path = CreateRoundPath(buttonRect, CornerRadius);
+        using var brush = new SolidBrush(Enabled ? BackColor : ControlPaint.Dark(BackColor));
         pevent.Graphics.FillPath(brush, path);
 
-        var textRect = new Rectangle(0, 0, Width, Height);
-        TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        var textColor = Enabled ? ForeColor : ControlPaint.Dark(ForeColor);
+        TextRenderer.DrawText(pevent.Graphics, Text, Font, buttonRect, textColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
@@ -401,6 +414,19 @@ internal sealed class RoundedButton : Button
         path.AddArc(arcRect, 90, 90);
         path.CloseFigure();
         return path;
+    }
+
+    private Color GetEffectiveBackColor()
+    {
+        for (Control? parent = Parent; parent != null; parent = parent.Parent)
+        {
+            if (parent.BackColor.A == 255)
+            {
+                return parent.BackColor;
+            }
+        }
+
+        return SystemColors.Control;
     }
 }
 
