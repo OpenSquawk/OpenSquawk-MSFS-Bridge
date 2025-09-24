@@ -2,6 +2,8 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -45,7 +47,7 @@ internal sealed class MainForm : Form
             AutoSize = true,
             Font = new Font("Segoe UI", 24F, FontStyle.Bold, GraphicsUnit.Point),
             ForeColor = Color.White,
-            Margin = new Padding(0, 0, 0, 8)
+            Margin = new Padding(0)
         };
 
         var subtitleLabel = new Label
@@ -56,6 +58,66 @@ internal sealed class MainForm : Form
             ForeColor = Color.FromArgb(200, 255, 255, 255),
             Margin = new Padding(0, 0, 0, 24)
         };
+
+        var appIconPath = Path.Combine(AppContext.BaseDirectory, "icon.png");
+        Image? headerImage = null;
+        if (File.Exists(appIconPath))
+        {
+            try
+            {
+                using var stream = File.OpenRead(appIconPath);
+                using var loadedImage = Image.FromStream(stream);
+                headerImage = new Bitmap(loadedImage);
+            }
+            catch
+            {
+                headerImage = null;
+            }
+        }
+
+        if (headerImage is not null)
+        {
+            var formIcon = CreateFormIcon(headerImage);
+            if (formIcon is not null)
+            {
+                Icon = formIcon;
+            }
+        }
+
+        Control headerControl;
+        if (headerImage is not null)
+        {
+            var headerPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                WrapContents = false,
+                Margin = new Padding(0, 0, 0, 8),
+                Padding = new Padding(0),
+                BackColor = Color.Transparent
+            };
+
+            var headerIcon = new PictureBox
+            {
+                Image = headerImage,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Size = new Size(48, 48),
+                Margin = new Padding(0, 0, 16, 0),
+                BackColor = Color.Transparent,
+                TabStop = false
+            };
+
+            titleLabel.Margin = new Padding(0, 6, 0, 0);
+
+            headerPanel.Controls.Add(headerIcon);
+            headerPanel.Controls.Add(titleLabel);
+            headerControl = headerPanel;
+        }
+        else
+        {
+            titleLabel.Margin = new Padding(0, 0, 0, 8);
+            headerControl = titleLabel;
+        }
 
         _connectionBadge = CreateBadge("Not connected", _secondaryColor);
         _simBadge = CreateBadge("Simulator offline", _secondaryColor);
@@ -171,7 +233,7 @@ internal sealed class MainForm : Form
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        mainLayout.Controls.Add(titleLabel, 0, 0);
+        mainLayout.Controls.Add(headerControl, 0, 0);
         mainLayout.Controls.Add(subtitleLabel, 0, 1);
         mainLayout.Controls.Add(badgePanel, 0, 2);
         mainLayout.Controls.Add(_userStatusLabel, 0, 3);
@@ -187,6 +249,28 @@ internal sealed class MainForm : Form
         _manager.TokenChanged += (_, __) => UpdateTokenText(_manager.Token);
 
         Shown += MainForm_Shown;
+    }
+
+    private static Icon? CreateFormIcon(Image sourceImage)
+    {
+        try
+        {
+            var targetSize = new Size(32, 32);
+            using var bitmap = new Bitmap(sourceImage, targetSize);
+            var handle = bitmap.GetHicon();
+            try
+            {
+                return (Icon)Icon.FromHandle(handle).Clone();
+            }
+            finally
+            {
+                DestroyIcon(handle);
+            }
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async void MainForm_Shown(object? sender, EventArgs e)
@@ -355,6 +439,9 @@ internal sealed class MainForm : Form
             sourceButton.Enabled = true;
         }
     }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyIcon(IntPtr handle);
 }
 
 internal sealed class RoundedButton : Button
