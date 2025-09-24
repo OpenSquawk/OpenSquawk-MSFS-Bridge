@@ -35,8 +35,8 @@ internal sealed class MainForm : Form
         ForeColor = Color.White;
         Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point);
         Padding = new Padding(32, 32, 32, 24);
-        ClientSize = new Size(900, 640);
-        MinimumSize = new Size(820, 640);
+        ClientSize = new Size(820, 640);
+        MinimumSize = new Size(780, 640);
         DoubleBuffered = true;
 
         var titleLabel = new Label
@@ -366,24 +366,49 @@ internal sealed class RoundedButton : Button
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
         DoubleBuffered = true;
+        UseVisualStyleBackColor = false;
+        SetStyle(ControlStyles.AllPaintingInWmPaint
+                 | ControlStyles.UserPaint
+                 | ControlStyles.OptimizedDoubleBuffer
+                 | ControlStyles.ResizeRedraw
+                 | ControlStyles.SupportsTransparentBackColor, true);
+        UpdateStyles();
     }
 
     protected override void OnPaint(PaintEventArgs pevent)
     {
         pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        pevent.Graphics.Clear(Color.Transparent);
 
-        using var path = CreateRoundPath(ClientRectangle, CornerRadius);
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        using var path = CreateRoundPath(rect, CornerRadius);
+        Region = new Region(path);
         using var brush = new SolidBrush(BackColor);
         pevent.Graphics.FillPath(brush, path);
 
-        var textRect = new Rectangle(0, 0, Width, Height);
-        TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        TextRenderer.DrawText(pevent.Graphics, Text, Font, ClientRectangle, ForeColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
-        // verhindert Flackern
+        pevent.Graphics.Clear(GetResolvedParentBackColor());
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        Invalidate();
+    }
+
+    private Color GetResolvedParentBackColor()
+    {
+        Control? parent = Parent;
+        while (parent != null && parent.BackColor == Color.Transparent)
+        {
+            parent = parent.Parent;
+        }
+
+        return parent?.BackColor ?? SystemColors.Control;
     }
 
     private static GraphicsPath CreateRoundPath(Rectangle rect, int radius)
@@ -412,6 +437,7 @@ internal sealed class BadgeLabel : Label
     {
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         using var path = CreateRoundPath(new Rectangle(0, 0, Width - 1, Height - 1), CornerRadius);
+        Region = new Region(path);
         using var brush = new SolidBrush(BackColor);
         e.Graphics.FillPath(brush, path);
 
@@ -420,7 +446,7 @@ internal sealed class BadgeLabel : Label
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
-        // verhindern, dass der Parent-Hintergrund gezeichnet wird
+        pevent.Graphics.Clear(GetResolvedParentBackColor());
     }
 
     protected override void OnResize(EventArgs e)
@@ -444,5 +470,16 @@ internal sealed class BadgeLabel : Label
         path.AddArc(arcRect, 90, 90);
         path.CloseFigure();
         return path;
+    }
+
+    private Color GetResolvedParentBackColor()
+    {
+        Control? parent = Parent;
+        while (parent != null && parent.BackColor == Color.Transparent)
+        {
+            parent = parent.Parent;
+        }
+
+        return parent?.BackColor ?? SystemColors.Control;
     }
 }
