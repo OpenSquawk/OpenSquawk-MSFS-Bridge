@@ -422,6 +422,24 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         }
     }
 
+    private void RequestData(Reqs request, Defs definition, SIMCONNECT_PERIOD period)
+    {
+        if (_sim == null)
+        {
+            return;
+        }
+
+        _sim.RequestDataOnSimObject(
+            request,
+            definition,
+            SimConnect.SIMCONNECT_OBJECT_ID_USER,
+            period,
+            SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT,
+            0,
+            0,
+            0);
+    }
+
     private void StartStream()
     {
         if (_sim == null || !_registered || _streamActive)
@@ -431,19 +449,19 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
 
         try
         {
-            _sim.RequestDataOnSimObject(Reqs.Latitude, Defs.Latitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.Longitude, Defs.Longitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.Altitude, Defs.Altitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.AirspeedIndicated, Defs.AirspeedIndicated, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.AirspeedTrue, Defs.AirspeedTrue, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.GroundVelocity, Defs.GroundVelocity, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.TurbineN1, Defs.TurbineN1, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.OnGround, Defs.OnGround, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.EngineCombustion, Defs.EngineCombustion, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.IndicatedAltitude, Defs.IndicatedAltitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.TransponderCode, Defs.TransponderCode, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.AdfActiveFreq, Defs.AdfActiveFreq, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
-            _sim.RequestDataOnSimObject(Reqs.AdfStandbyFreq, Defs.AdfStandbyFreq, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.Latitude, Defs.Latitude, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.Longitude, Defs.Longitude, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.Altitude, Defs.Altitude, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.AirspeedIndicated, Defs.AirspeedIndicated, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.AirspeedTrue, Defs.AirspeedTrue, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.GroundVelocity, Defs.GroundVelocity, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.TurbineN1, Defs.TurbineN1, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.OnGround, Defs.OnGround, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.EngineCombustion, Defs.EngineCombustion, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.IndicatedAltitude, Defs.IndicatedAltitude, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.TransponderCode, Defs.TransponderCode, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.AdfActiveFreq, Defs.AdfActiveFreq, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.AdfStandbyFreq, Defs.AdfStandbyFreq, SIMCONNECT_PERIOD.SECOND);
 
             _streamActive = true;
             Log?.Invoke(this, new LogMessageEventArgs("Sim telemetry stream started"));
@@ -463,19 +481,19 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
 
         try
         {
-            _sim.RequestDataOnSimObject(Reqs.Latitude, Defs.Latitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.Longitude, Defs.Longitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.Altitude, Defs.Altitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.AirspeedIndicated, Defs.AirspeedIndicated, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.AirspeedTrue, Defs.AirspeedTrue, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.GroundVelocity, Defs.GroundVelocity, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.TurbineN1, Defs.TurbineN1, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.OnGround, Defs.OnGround, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.EngineCombustion, Defs.EngineCombustion, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.IndicatedAltitude, Defs.IndicatedAltitude, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.TransponderCode, Defs.TransponderCode, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.AdfActiveFreq, Defs.AdfActiveFreq, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
-            _sim.RequestDataOnSimObject(Reqs.AdfStandbyFreq, Defs.AdfStandbyFreq, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.Latitude, Defs.Latitude, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.Longitude, Defs.Longitude, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.Altitude, Defs.Altitude, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.AirspeedIndicated, Defs.AirspeedIndicated, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.AirspeedTrue, Defs.AirspeedTrue, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.GroundVelocity, Defs.GroundVelocity, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.TurbineN1, Defs.TurbineN1, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.OnGround, Defs.OnGround, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.EngineCombustion, Defs.EngineCombustion, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.IndicatedAltitude, Defs.IndicatedAltitude, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.TransponderCode, Defs.TransponderCode, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.AdfActiveFreq, Defs.AdfActiveFreq, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.AdfStandbyFreq, Defs.AdfStandbyFreq, SIMCONNECT_PERIOD.NEVER);
         }
         catch (Exception ex)
         {
