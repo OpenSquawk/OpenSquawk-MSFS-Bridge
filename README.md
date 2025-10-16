@@ -21,20 +21,29 @@ This repository contains the Windows bridge application that connects Microsoft 
 
 ## Building
 
-From the repository root run:
+From the repository root run the following steps in order:
 
-```powershell
-# Restore and build all projects in the solution
- dotnet build OpensquawkBridge-msfs.sln
-```
+1. Restore NuGet dependencies for the solution:
 
-You can also build the main project directly:
+   ```powershell
+   dotnet restore OpensquawkBridge-msfs.sln
+   ```
 
-```powershell
- dotnet build OpensquawkBridge-msfs/OpensquawkBridge-msfs.csproj
-```
+2. Build the solution (or a specific project if you prefer):
 
-Both commands emit debug binaries to `OpensquawkBridge-msfs/bin/Debug/net8.0-windows/win-x64/`. If the build stops with an error mentioning missing or truncated SimConnect DLLs, fetch the real binaries via Git LFS or copy them from the MSFS SDK into `OpensquawkBridge.SimConnectAdapter/libs`.
+   ```powershell
+   dotnet build OpensquawkBridge-msfs.sln
+   # or
+   dotnet build OpensquawkBridge-msfs/OpensquawkBridge-msfs.csproj
+   ```
+
+3. Produce a release-ready publish folder:
+
+   ```powershell
+   dotnet publish OpensquawkBridge-msfs/OpensquawkBridge-msfs.csproj -c Release -r win-x64 --self-contained true
+   ```
+
+All commands emit debug binaries to `OpensquawkBridge-msfs/bin/Debug/net8.0-windows/win-x64/`, and the publish command creates a release build under `OpensquawkBridge-msfs/bin/Release/net8.0-windows/win-x64/publish/`. If the build stops with an error mentioning missing or truncated SimConnect DLLs, fetch the real binaries via Git LFS or copy them from the MSFS SDK into `OpensquawkBridge.SimConnectAdapter/libs`.
 
 ## Running the bridge locally
 
@@ -70,6 +79,10 @@ To create a distributable folder use `dotnet publish`. Run the command either fr
 ```
 
 The publish output is written to `OpensquawkBridge-msfs/bin/Release/net8.0-windows/win-x64/publish/`.
+
+After publishing, copy both DLLs from the repository's `libs/` directory into the release output folder **one level above** the `publish` directory (i.e. not into the `publish` subfolder). The target path is `C:\Users\Domi\Downloads\bridge\OpensquawkBridge-msfs\bin\Release\net8.0-windows\win-x64`.
+
+Without copying these libraries the required DLLs are missing and the published `.exe` will fail to launch.
 
 ## Configuration files
 
