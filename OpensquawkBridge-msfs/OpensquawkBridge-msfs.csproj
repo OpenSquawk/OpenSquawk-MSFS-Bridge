@@ -12,12 +12,15 @@
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="System.Net.Http.Json" Version="9.0.9" />
-        <None Include=".env">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
+    <None Include=".env.example">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include=".env" Condition="Exists('.env')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="..\icon.png">
       <Link>icon.png</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -35,6 +38,17 @@
                       CopyToOutputDirectory="PreserveNewest"
                       CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="EnsureEnvFile" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <EnvFile>$(ProjectDir).env</EnvFile>
+      <EnvExample>$(ProjectDir).env.example</EnvExample>
+    </PropertyGroup>
+
+    <Copy SourceFiles="$(EnvExample)"
+          DestinationFiles="$(EnvFile)"
+          Condition="!Exists('$(EnvFile)') and Exists('$(EnvExample)')" />
+  </Target>
 
 
 </Project>

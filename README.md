@@ -15,7 +15,7 @@ This repository contains the Windows bridge application that connects Microsoft 
 
 0. `choco install dotnet-sdk --version=8.0.100`
 1. Clone the repository.
-2. Copy `.env.example` to `.env` and adjust any variables you need. The defaults point to the production OpenSquawk endpoints. Set `BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS=true` if you want the GUI to launch even when the SimConnect DLL cannot be loaded.
+2. Copy `OpensquawkBridge-msfs/.env.example` to `OpensquawkBridge-msfs/.env` and adjust any variables you need. The build now creates `.env` automatically from the example on first run if it is missing. Set `BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS=true` if you want the GUI to launch even when the SimConnect DLL cannot be loaded.
 3. No manual token creation is required. On first launch the bridge will create `bridge-config.json` next to the executable, open `https://opensquawk.de/bridge/connect?token=...` in your browser, and keep polling the backend until the login completes.
 
 ## Building
@@ -72,7 +72,7 @@ The publish output is written to `OpensquawkBridge-msfs/bin/Release/net8.0-windo
 
 ## Configuration files
 
-- `.env` (optional): environment overrides for the bridge runtime.
+- `.env` (optional): environment overrides for the bridge runtime. The file is auto-generated from `.env.example` when you build if it doesn't already exist.
 - `bridge-config.json`: automatically created token file stored next to the executable.
 
 Keep `bridge-config.json` with the executable when you move or copy the bridge so the stored token persists.
