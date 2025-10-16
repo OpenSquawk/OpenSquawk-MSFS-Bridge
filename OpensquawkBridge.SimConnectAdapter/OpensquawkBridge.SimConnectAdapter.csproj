@@ -22,4 +22,19 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
+
+  <Target Name="EnsureSimConnectLibraries" BeforeTargets="ResolveReferences">
+    <ItemGroup>
+      <_SimConnectLibraries Include="$(MSBuildProjectDirectory)\libs\Microsoft.FlightSimulator.SimConnect.dll" />
+      <_SimConnectLibraries Include="$(MSBuildProjectDirectory)\libs\SimConnect.dll" />
+    </ItemGroup>
+
+    <Error
+      Condition="!Exists('%(_SimConnectLibraries.Identity)')"
+      Text="SimConnect runtime '%(_SimConnectLibraries.Filename)%(_SimConnectLibraries.Extension)' is missing. Install Git LFS and re-fetch the repository, or copy the DLL from the MSFS SDK into the 'libs' folder." />
+
+    <Error
+      Condition="Exists('%(_SimConnectLibraries.Identity)') and $([System.IO.FileInfo]::new('%(_SimConnectLibraries.Identity)').Length) &lt; 1024"
+      Text="SimConnect runtime '%(_SimConnectLibraries.Filename)%(_SimConnectLibraries.Extension)' appears to be a Git LFS pointer file. Install Git LFS and run 'git lfs pull', or replace the file with the real DLL from the MSFS SDK." />
+  </Target>
 </Project>

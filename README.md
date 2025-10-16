@@ -7,6 +7,7 @@ This repository contains the Windows bridge application that connects Microsoft 
 - Windows 10/11 with the Desktop runtime.
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (required for building, running, and publishing).
 - Optional: Microsoft Flight Simulator (MSFS) with the `Microsoft.FlightSimulator.SimConnect.dll` runtime if you plan to connect to the simulator on the same machine.
+- [Git LFS](https://git-lfs.com/) when cloning this repository so the bundled SimConnect binaries are downloaded instead of placeholder pointer files.
 
 ## One-time setup
 
@@ -14,7 +15,7 @@ This repository contains the Windows bridge application that connects Microsoft 
 
 
 0. `choco install dotnet-sdk --version=8.0.100`
-1. Clone the repository.
+1. Clone the repository and ensure Git LFS is initialised: `git lfs install && git lfs pull`.
 2. Copy `OpensquawkBridge-msfs/.env.example` to `OpensquawkBridge-msfs/.env` and adjust any variables you need. The build now creates `.env` automatically from the example on first run if it is missing. Set `BRIDGE_IGNORE_SIMCONNECT_LOAD_ERRORS=true` if you want the GUI to launch even when the SimConnect DLL cannot be loaded.
 3. No manual token creation is required. On first launch the bridge will create `bridge-config.json` next to the executable, open `https://opensquawk.de/bridge/connect?token=...` in your browser, and keep polling the backend until the login completes.
 
@@ -33,7 +34,7 @@ You can also build the main project directly:
  dotnet build OpensquawkBridge-msfs/OpensquawkBridge-msfs.csproj
 ```
 
-Both commands emit debug binaries to `OpensquawkBridge-msfs/bin/Debug/net8.0-windows/win-x64/`.
+Both commands emit debug binaries to `OpensquawkBridge-msfs/bin/Debug/net8.0-windows/win-x64/`. If the build stops with an error mentioning missing or truncated SimConnect DLLs, fetch the real binaries via Git LFS or copy them from the MSFS SDK into `OpensquawkBridge.SimConnectAdapter/libs`.
 
 ## Running the bridge locally
 
