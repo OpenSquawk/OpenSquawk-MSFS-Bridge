@@ -6,6 +6,8 @@ namespace OpensquawkBridge.SimConnectAdapter;
 
 public sealed class SimConnectAdapter : ISimConnectAdapter
 {
+    private static readonly TimeSpan DebugLoopInterval = TimeSpan.FromSeconds(5);
+
     private enum Defs : uint
     {
         Latitude = 0x5000,
@@ -66,6 +68,8 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     private bool _registered;
     private bool _streamActive;
     private bool _disposed;
+    private readonly bool _debug = IsTruthy(Environment.GetEnvironmentVariable("DEBUG"));
+    private DateTimeOffset _lastLoopLog;
 
     private double _latitude;
     private double _longitude;
@@ -109,6 +113,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         }
 
         _loopCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        DebugLog("StartAsync called; starting background loop.");
         _loopTask = Task.Run(() => RunAsync(_loopCts.Token), CancellationToken.None);
         return Task.CompletedTask;
     }
@@ -163,6 +168,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     {
         try
         {
+            DebugLog("Run loop starting.");
             try
             {
                 InitializeSimConnect();
@@ -178,6 +184,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
                 try
                 {
                     _sim?.ReceiveMessage();
+                    LogLoopHeartbeat();
                 }
                 catch (COMException ex)
                 {
@@ -205,7 +212,9 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     private void InitializeSimConnect()
     {
         var connectionName = $"OpenSquawkBridge_{Environment.ProcessId}";
+        DebugLog($"InitializeSimConnect starting (name={connectionName}).");
         _sim = new SimConnect(connectionName, IntPtr.Zero, 0, null, 0);
+        DebugLog("SimConnect instance created.");
 
         _sim.OnRecvOpen += OnRecvOpen;
         _sim.OnRecvQuit += OnRecvQuit;
@@ -551,6 +560,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     {
         if (_sim == null || !_registered || _streamActive)
         {
+            DebugLog($"StartStream skipped (sim={_sim != null}, registered={_registered}, active={_streamActive}).");
             return;
         }
 
@@ -590,6 +600,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     {
         if (_sim == null || !_streamActive)
         {
+            DebugLog($"StopStream skipped (sim={_sim != null}, active={_streamActive}).");
             return;
         }
 
@@ -656,5 +667,47 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
             IsFlightLoaded = false;
             ConnectionChanged?.Invoke(this, new SimConnectionChangedEventArgs(false, false));
         }
+    }
+
+    private void LogLoopHeartbeat()
+    {
+        if (!_debug)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (now - _lastLoopLog < DebugLoopInterval)
+        {
+            return;
+        }
+
+        _lastLoopLog = now;
+        DebugLog("Receive loop heartbeat.");
+    }
+
+    private void DebugLog(string message)
+    {
+        if (!_debug)
+        {
+            return;
+        }
+
+        Log?.Invoke(this, new LogMessageEventArgs($"[debug] {message}"));
+    }
+
+    private static bool IsTruthy(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        value = value.Trim();
+        return value.Equals("1", StringComparison.OrdinalIgnoreCase)
+               || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+               || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+               || value.Equals("on", StringComparison.OrdinalIgnoreCase)
+               || value.Equals("enabled", StringComparison.OrdinalIgnoreCase);
     }
 }
