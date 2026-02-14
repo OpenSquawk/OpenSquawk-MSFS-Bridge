@@ -110,7 +110,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         }
 
         _loopCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-        Log?.Invoke(this, new LogMessageEventArgs("Starting SimConnect adapter loop."));
+        Log?.Invoke(this, new LogMessageEventArgs($"Starting SimConnect adapter loop (canceled={token.IsCancellationRequested})."));
         _loopTask = Task.Run(() => RunAsync(_loopCts.Token), CancellationToken.None);
         return Task.CompletedTask;
     }
@@ -165,6 +165,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     {
         try
         {
+            Log?.Invoke(this, new LogMessageEventArgs("SimConnect loop task started."));
             try
             {
                 InitializeSimConnect();
@@ -200,6 +201,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         }
         finally
         {
+            Log?.Invoke(this, new LogMessageEventArgs("SimConnect loop task ended."));
             Cleanup();
         }
     }
