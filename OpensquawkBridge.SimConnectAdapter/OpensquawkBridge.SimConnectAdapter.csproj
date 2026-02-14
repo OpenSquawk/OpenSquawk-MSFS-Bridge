@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpensquawkBridge.Abstractions\OpensquawkBridge.Abstractions.csproj" />
-    <ProjectReference Include="..\OpensquawkBridge.SimConnectAdapter\OpensquawkBridge.SimConnectAdapter.csproj" />
     <Reference Include="Microsoft.FlightSimulator.SimConnect">
       <HintPath>libs\Microsoft.FlightSimulator.SimConnect.dll</HintPath>
       <Private>true</Private>
