@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Reflection;
 using DotNetEnv;
 using OpensquawkBridge.Abstractions;
 using STimer = System.Timers.Timer;
@@ -105,6 +106,8 @@ internal sealed class BridgeManager : IDisposable
     public async Task InitializeAsync()
     {
         LogMessage("OpenSquawk Bridge ready.");
+        LogMessage($"Base directory: {AppContext.BaseDirectory}");
+        LogMessage($"Entry assembly: {GetEntryAssemblyInfo()}");
         LogMessage($"Status endpoint: {_statusUrl}");
         LogMessage($"Data endpoint: {_dataUrl}");
         LogMessage($"Intervals – active: {_activeIntervalSec}s, idle: {_idleIntervalSec}s");
@@ -351,6 +354,26 @@ internal sealed class BridgeManager : IDisposable
         catch (Exception ex)
         {
             LogMessage($"⚠️ Failed to read adapter assembly info: {ex.Message}");
+        }
+    }
+
+    private static string GetEntryAssemblyInfo()
+    {
+        try
+        {
+            var assembly = Assembly.GetEntryAssembly();
+            if (assembly == null)
+            {
+                return "<unknown>";
+            }
+
+            var location = string.IsNullOrWhiteSpace(assembly.Location) ? "<in-memory>" : assembly.Location;
+            var version = assembly.GetName().Version?.ToString() ?? "unknown";
+            return $"{location} (v{version})";
+        }
+        catch (Exception ex)
+        {
+            return $"<error: {ex.Message}>";
         }
     }
 

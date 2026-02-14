@@ -13,11 +13,11 @@ $publishRuntime = 'win-x64'
 $configuration = 'Release'
 $framework = 'net8.0-windows'
 $publishFolder = Join-Path $repoRoot "OpensquawkBridge-msfs/bin/$configuration/$framework/$publishRuntime/publish"
-$buildRoot = Split-Path $publishFolder -Parent
 $exeName = 'OpensquawkBridge-msfs.exe'
 $exePath = Join-Path $publishFolder $exeName
 $depsFolder = Join-Path $publishFolder 'deps'
 $libsSource = Join-Path $repoRoot 'libs'
+ $nativeLibsToKeep = @('SimConnect.dll', 'Microsoft.FlightSimulator.SimConnect.dll')
 
 function Invoke-DotNetCommand {
     param(
@@ -39,9 +39,9 @@ try {
     }
 
     if (Test-Path $libsSource) {
-        Write-Host "Copying libraries from '$libsSource' to '$buildRoot'" -ForegroundColor Cyan
+        Write-Host "Copying libraries from '$libsSource' to '$publishFolder'" -ForegroundColor Cyan
         Get-ChildItem -Path $libsSource -Filter '*.dll' | ForEach-Object {
-            Copy-Item -Path $_.FullName -Destination $buildRoot -Force
+            Copy-Item -Path $_.FullName -Destination $publishFolder -Force
         }
     } else {
         Write-Warning "Library source folder '$libsSource' not found."
@@ -52,7 +52,7 @@ try {
     }
 
     Get-ChildItem -Path $publishFolder | Where-Object {
-        $_.Name -ne $exeName -and $_.Name -ne 'deps'
+        $_.Name -ne $exeName -and $_.Name -ne 'deps' -and ($nativeLibsToKeep -notcontains $_.Name)
     } | ForEach-Object {
         $destination = Join-Path $depsFolder $_.Name
         if (Test-Path $destination) {

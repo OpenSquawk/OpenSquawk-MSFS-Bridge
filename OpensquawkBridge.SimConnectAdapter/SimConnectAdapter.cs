@@ -112,6 +112,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         _loopCts = CancellationTokenSource.CreateLinkedTokenSource(token);
         Log?.Invoke(this, new LogMessageEventArgs($"Starting SimConnect adapter loop (canceled={token.IsCancellationRequested})."));
         _loopTask = Task.Run(() => RunAsync(_loopCts.Token), CancellationToken.None);
+        Log?.Invoke(this, new LogMessageEventArgs("SimConnect loop task scheduled."));
         return Task.CompletedTask;
     }
 
