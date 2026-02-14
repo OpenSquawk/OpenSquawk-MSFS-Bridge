@@ -163,7 +163,15 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     {
         try
         {
-            InitializeSimConnect();
+            try
+            {
+                InitializeSimConnect();
+            }
+            catch (Exception ex)
+            {
+                Log?.Invoke(this, new LogMessageEventArgs($"SimConnect init failed: {ex.Message}"));
+                return;
+            }
 
             while (!token.IsCancellationRequested)
             {
@@ -216,6 +224,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
 
         RegisterDataDefinitions();
         SubscribeToEvents();
+        StartStream();
     }
 
     private void OnRecvQuit(SimConnect sender, SIMCONNECT_RECV data)
@@ -254,6 +263,13 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         if (data.dwData is not object[] values || values.Length == 0)
         {
             return;
+        }
+
+        if (!IsFlightLoaded)
+        {
+            IsFlightLoaded = true;
+            Log?.Invoke(this, new LogMessageEventArgs("Flight detected via telemetry"));
+            ConnectionChanged?.Invoke(this, new SimConnectionChangedEventArgs(IsConnected, true));
         }
 
         switch ((Reqs)data.dwRequestID)
