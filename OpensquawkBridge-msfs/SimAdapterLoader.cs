@@ -6,22 +6,22 @@ using OpensquawkBridge.Abstractions;
 
 internal static class SimAdapterLoader
 {
-    private const string AdapterAssemblyName = "OpensquawkBridge.SimConnectAdapter.dll";
+    private const string AdapterAssemblySimpleName = "OpensquawkBridge.SimConnectAdapter";
+    private const string AdapterAssemblyFileName = AdapterAssemblySimpleName + ".dll";
     private const string AdapterTypeName = "OpensquawkBridge.SimConnectAdapter.SimConnectAdapter";
 
     public static bool TryLoad(out SimAdapterHandle? handle, out Exception? error)
     {
-        var assemblyPath = Path.Combine(AppContext.BaseDirectory, AdapterAssemblyName);
-        if (!File.Exists(assemblyPath))
-        {
-            handle = null;
-            error = new FileNotFoundException("SimConnect adapter assembly not found.", assemblyPath);
-            return false;
-        }
-
         try
         {
-            var assembly = Assembly.LoadFrom(assemblyPath);
+            var assembly = TryLoadAdapterAssembly(out var loadError);
+            if (assembly == null)
+            {
+                handle = null;
+                error = loadError ?? new FileNotFoundException("SimConnect adapter assembly not found.");
+                return false;
+            }
+
             var type = assembly.GetType(AdapterTypeName, throwOnError: true)!;
             if (Activator.CreateInstance(type) is not ISimConnectAdapter adapter)
             {
@@ -39,6 +39,37 @@ internal static class SimAdapterLoader
             handle = null;
             error = ex;
             return false;
+        }
+    }
+
+    private static Assembly? TryLoadAdapterAssembly(out Exception? error)
+    {
+        error = null;
+
+        try
+        {
+            // Works for single-file publish where the adapter is bundled.
+            return Assembly.Load(AdapterAssemblySimpleName);
+        }
+        catch (Exception ex)
+        {
+            error = ex;
+        }
+
+        var assemblyPath = Path.Combine(AppContext.BaseDirectory, AdapterAssemblyFileName);
+        if (!File.Exists(assemblyPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Assembly.LoadFrom(assemblyPath);
+        }
+        catch (Exception ex)
+        {
+            error = ex;
+            return null;
         }
     }
 
