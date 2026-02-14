@@ -324,6 +324,7 @@ internal sealed class BridgeManager : IDisposable
         _simHandle.Adapter.Log += OnAdapterLog;
         _simHandle.Adapter.ConnectionChanged += OnAdapterConnectionChanged;
         _simHandle.Adapter.Telemetry += OnAdapterTelemetry;
+        LogAdapterAssemblyInfo(handle);
 
         _simCts = new CancellationTokenSource();
 
@@ -335,6 +336,21 @@ internal sealed class BridgeManager : IDisposable
         catch (Exception ex)
         {
             HandleAdapterFailure(ex);
+        }
+    }
+
+    private void LogAdapterAssemblyInfo(SimAdapterHandle handle)
+    {
+        try
+        {
+            var assembly = handle.Assembly;
+            var location = string.IsNullOrWhiteSpace(assembly.Location) ? "<in-memory>" : assembly.Location;
+            var version = assembly.GetName().Version?.ToString() ?? "unknown";
+            LogMessage($"SimConnect adapter assembly: {location} (v{version}).");
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"⚠️ Failed to read adapter assembly info: {ex.Message}");
         }
     }
 
