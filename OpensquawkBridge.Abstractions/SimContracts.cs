@@ -46,7 +46,14 @@ public sealed record SimTelemetry(
     bool EngineCombustion,
     int TransponderCode,
     int AdfActiveFrequency,
-    double AdfStandbyFrequency);
+    double AdfStandbyFrequency,
+    double VerticalSpeed,
+    double PlanePitchDegrees,
+    double TurbineN1Engine2,
+    bool GearHandlePosition,
+    int FlapsHandleIndex,
+    bool BrakeParkingPosition,
+    bool AutopilotMaster);
 
 public interface ISimConnectAdapter : IDisposable
 {

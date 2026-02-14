@@ -596,7 +596,14 @@ internal sealed class BridgeManager : IDisposable
                 n1_pct = Math.Round(telemetry.TurbineN1, 1),
                 transponder_code = telemetry.TransponderCode,
                 adf_active_freq = telemetry.AdfActiveFrequency,
-                adf_standby_freq_hz = Math.Round(telemetry.AdfStandbyFrequency, 0)
+                adf_standby_freq_hz = Math.Round(telemetry.AdfStandbyFrequency, 0),
+                vertical_speed_fpm = Math.Round(telemetry.VerticalSpeed, 0),
+                pitch_deg = Math.Round(telemetry.PlanePitchDegrees, 1),
+                n1_pct_2 = Math.Round(telemetry.TurbineN1Engine2, 1),
+                gear_handle = telemetry.GearHandlePosition,
+                flaps_index = telemetry.FlapsHandleIndex,
+                parking_brake = telemetry.BrakeParkingPosition,
+                autopilot_master = telemetry.AutopilotMaster
             };
 
             LogMessage($"Active tick lat={payload.latitude:F6} lon={payload.longitude:F6} alt={payload.altitude_ft_true:F0}ft gs={payload.groundspeed_kt:F1}kt");

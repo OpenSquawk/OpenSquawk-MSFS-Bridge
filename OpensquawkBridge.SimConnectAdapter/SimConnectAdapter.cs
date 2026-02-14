@@ -20,7 +20,14 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         IndicatedAltitude = 0x5009,
         TransponderCode = 0x500A,
         AdfActiveFreq = 0x500B,
-        AdfStandbyFreq = 0x500C
+        AdfStandbyFreq = 0x500C,
+        VerticalSpeed = 0x500D,
+        PlanePitch = 0x500E,
+        TurbineN1Engine2 = 0x500F,
+        GearHandle = 0x5010,
+        FlapsIndex = 0x5011,
+        ParkingBrake = 0x5012,
+        AutopilotMaster = 0x5013
     }
 
     private enum Reqs : uint
@@ -37,7 +44,14 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         IndicatedAltitude = 0x5109,
         TransponderCode = 0x510A,
         AdfActiveFreq = 0x510B,
-        AdfStandbyFreq = 0x510C
+        AdfStandbyFreq = 0x510C,
+        VerticalSpeed = 0x510D,
+        PlanePitch = 0x510E,
+        TurbineN1Engine2 = 0x510F,
+        GearHandle = 0x5110,
+        FlapsIndex = 0x5111,
+        ParkingBrake = 0x5112,
+        AutopilotMaster = 0x5113
     }
 
     private enum Events : uint
@@ -66,6 +80,13 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     private int _transponderCode;
     private int _adfActiveFreq;
     private double _adfStandbyFreq;
+    private double _verticalSpeed;
+    private double _planePitch;
+    private double _turbineN1Engine2;
+    private bool _gearHandle;
+    private int _flapsIndex;
+    private bool _parkingBrake;
+    private bool _autopilotMaster;
     private DateTimeOffset _lastTelemetryTs;
 
     public event EventHandler<LogMessageEventArgs>? Log;
@@ -315,6 +336,48 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
                     _adfStandbyFreq = adfStby;
                 }
                 break;
+            case Reqs.VerticalSpeed:
+                if (values[0] is double vs)
+                {
+                    _verticalSpeed = vs;
+                }
+                break;
+            case Reqs.PlanePitch:
+                if (values[0] is double pitch)
+                {
+                    _planePitch = pitch;
+                }
+                break;
+            case Reqs.TurbineN1Engine2:
+                if (values[0] is double n1e2)
+                {
+                    _turbineN1Engine2 = n1e2;
+                }
+                break;
+            case Reqs.GearHandle:
+                if (values[0] is int gear)
+                {
+                    _gearHandle = gear != 0;
+                }
+                break;
+            case Reqs.FlapsIndex:
+                if (values[0] is int flaps)
+                {
+                    _flapsIndex = flaps;
+                }
+                break;
+            case Reqs.ParkingBrake:
+                if (values[0] is int pbrake)
+                {
+                    _parkingBrake = pbrake != 0;
+                }
+                break;
+            case Reqs.AutopilotMaster:
+                if (values[0] is int apMaster)
+                {
+                    _autopilotMaster = apMaster != 0;
+                }
+                break;
         }
 
         _lastTelemetryTs = DateTimeOffset.UtcNow;
@@ -337,7 +400,14 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
             _engineCombustion,
             _transponderCode,
             _adfActiveFreq,
-            _adfStandbyFreq);
+            _adfStandbyFreq,
+            _verticalSpeed,
+            _planePitch,
+            _turbineN1Engine2,
+            _gearHandle,
+            _flapsIndex,
+            _parkingBrake,
+            _autopilotMaster);
 
         Telemetry?.Invoke(this, new SimTelemetryEventArgs(telemetry));
     }
@@ -394,6 +464,27 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
 
             _sim.AddToDataDefinition(Defs.AdfStandbyFreq, "ADF STANDBY FREQUENCY:1", "Hz", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
             _sim.RegisterDataDefineStruct<double>(Defs.AdfStandbyFreq);
+
+            _sim.AddToDataDefinition(Defs.VerticalSpeed, "VERTICAL SPEED", "feet per minute", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
+            _sim.RegisterDataDefineStruct<double>(Defs.VerticalSpeed);
+
+            _sim.AddToDataDefinition(Defs.PlanePitch, "PLANE PITCH DEGREES", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
+            _sim.RegisterDataDefineStruct<double>(Defs.PlanePitch);
+
+            _sim.AddToDataDefinition(Defs.TurbineN1Engine2, "TURB ENG N1:2", "percent", SIMCONNECT_DATATYPE.FLOAT64, 0, 0);
+            _sim.RegisterDataDefineStruct<double>(Defs.TurbineN1Engine2);
+
+            _sim.AddToDataDefinition(Defs.GearHandle, "GEAR HANDLE POSITION", "Bool", SIMCONNECT_DATATYPE.INT32, 0, 0);
+            _sim.RegisterDataDefineStruct<int>(Defs.GearHandle);
+
+            _sim.AddToDataDefinition(Defs.FlapsIndex, "FLAPS HANDLE INDEX", "number", SIMCONNECT_DATATYPE.INT32, 0, 0);
+            _sim.RegisterDataDefineStruct<int>(Defs.FlapsIndex);
+
+            _sim.AddToDataDefinition(Defs.ParkingBrake, "BRAKE PARKING POSITION", "Bool", SIMCONNECT_DATATYPE.INT32, 0, 0);
+            _sim.RegisterDataDefineStruct<int>(Defs.ParkingBrake);
+
+            _sim.AddToDataDefinition(Defs.AutopilotMaster, "AUTOPILOT MASTER", "Bool", SIMCONNECT_DATATYPE.INT32, 0, 0);
+            _sim.RegisterDataDefineStruct<int>(Defs.AutopilotMaster);
 
             _registered = true;
             Log?.Invoke(this, new LogMessageEventArgs("Data definitions registered"));
@@ -462,6 +553,13 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
             RequestData(Reqs.TransponderCode, Defs.TransponderCode, SIMCONNECT_PERIOD.SECOND);
             RequestData(Reqs.AdfActiveFreq, Defs.AdfActiveFreq, SIMCONNECT_PERIOD.SECOND);
             RequestData(Reqs.AdfStandbyFreq, Defs.AdfStandbyFreq, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.VerticalSpeed, Defs.VerticalSpeed, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.PlanePitch, Defs.PlanePitch, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.TurbineN1Engine2, Defs.TurbineN1Engine2, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.GearHandle, Defs.GearHandle, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.FlapsIndex, Defs.FlapsIndex, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.ParkingBrake, Defs.ParkingBrake, SIMCONNECT_PERIOD.SECOND);
+            RequestData(Reqs.AutopilotMaster, Defs.AutopilotMaster, SIMCONNECT_PERIOD.SECOND);
 
             _streamActive = true;
             Log?.Invoke(this, new LogMessageEventArgs("Sim telemetry stream started"));
@@ -494,6 +592,13 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
             RequestData(Reqs.TransponderCode, Defs.TransponderCode, SIMCONNECT_PERIOD.NEVER);
             RequestData(Reqs.AdfActiveFreq, Defs.AdfActiveFreq, SIMCONNECT_PERIOD.NEVER);
             RequestData(Reqs.AdfStandbyFreq, Defs.AdfStandbyFreq, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.VerticalSpeed, Defs.VerticalSpeed, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.PlanePitch, Defs.PlanePitch, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.TurbineN1Engine2, Defs.TurbineN1Engine2, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.GearHandle, Defs.GearHandle, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.FlapsIndex, Defs.FlapsIndex, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.ParkingBrake, Defs.ParkingBrake, SIMCONNECT_PERIOD.NEVER);
+            RequestData(Reqs.AutopilotMaster, Defs.AutopilotMaster, SIMCONNECT_PERIOD.NEVER);
         }
         catch (Exception ex)
         {
