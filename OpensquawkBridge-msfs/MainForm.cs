@@ -9,6 +9,11 @@ using System.Windows.Forms;
 
 internal sealed class MainForm : Form
 {
+    private const int BadgeMinWidth = 170;
+    private const int BadgeMaxWidth = 320;
+    private const int ButtonMinWidth = 150;
+    private const int ButtonHorizontalPadding = 36;
+
     private readonly BridgeManager _manager;
     private readonly BadgeLabel _connectionBadge;
     private readonly BadgeLabel _simBadge;
@@ -120,7 +125,7 @@ internal sealed class MainForm : Form
         _connectButton = CreatePrimaryButton("Open login in browser");
         _connectButton.Click += (_, __) => _manager.OpenLoginPage();
 
-        _resetButton = CreateSecondaryButton("Log out & new token");
+        _resetButton = CreateSecondaryButton("Reset login");
         _resetButton.Click += async (_, __) => await RunAsyncAction(_resetButton, _manager.ResetTokenAsync);
 
         _copyButton = CreateSecondaryButton("Copy token");
@@ -227,11 +232,11 @@ internal sealed class MainForm : Form
 
     private BadgeLabel CreateBadge(string text, Color color)
     {
-        return new BadgeLabel
+        var badge = new BadgeLabel
         {
             Text = text,
             AutoSize = false,
-            Size = new Size(170, 40),
+            Size = new Size(BadgeMinWidth, 40),
             Margin = new Padding(0, 0, 12, 0),
             BackColor = color,
             ForeColor = Color.White,
@@ -239,34 +244,58 @@ internal sealed class MainForm : Form
             Padding = new Padding(0),
             TextAlign = ContentAlignment.MiddleCenter
         };
+
+        ResizeBadgeToText(badge);
+        return badge;
     }
 
     private RoundedButton CreatePrimaryButton(string text)
     {
-        return new RoundedButton
+        var button = new RoundedButton
         {
             Text = text,
             BackColor = _primaryColor,
             ForeColor = Color.Black,
             Margin = new Padding(0, 0, 12, 0),
-            Size = new Size(200, 44),
+            Size = new Size(ButtonMinWidth, 44),
             CornerRadius = 24,
             Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point)
         };
+
+        ResizeButtonToText(button);
+        return button;
     }
 
     private RoundedButton CreateSecondaryButton(string text)
     {
-        return new RoundedButton
+        var button = new RoundedButton
         {
             Text = text,
             BackColor = _secondaryColor,
             ForeColor = Color.White,
             Margin = new Padding(0, 0, 12, 0),
-            Size = new Size(200, 44),
+            Size = new Size(ButtonMinWidth, 44),
             CornerRadius = 24,
             Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point)
         };
+
+        ResizeButtonToText(button);
+        return button;
+    }
+
+    private static void ResizeButtonToText(RoundedButton button)
+    {
+        var measured = TextRenderer.MeasureText(button.Text, button.Font);
+        var width = Math.Max(ButtonMinWidth, measured.Width + ButtonHorizontalPadding);
+        button.Size = new Size(width, button.Height);
+    }
+
+    private static void ResizeBadgeToText(BadgeLabel badge)
+    {
+        var measured = TextRenderer.MeasureText(badge.Text, badge.Font);
+        var width = Math.Max(BadgeMinWidth, measured.Width + 28);
+        width = Math.Min(width, BadgeMaxWidth);
+        badge.Size = new Size(width, badge.Height);
     }
 
     private void UpdateTokenText(string token)
@@ -291,12 +320,14 @@ internal sealed class MainForm : Form
         if (e.IsConnected)
         {
             _connectionBadge.Text = e.UserName != null ? $"Connected as {e.UserName}" : "Connected";
+            ResizeBadgeToText(_connectionBadge);
             _connectionBadge.BackColor = Color.FromArgb(60, _primaryColor);
             _userStatusLabel.Text = e.UserName != null ? $"Signed in as {e.UserName}" : "User connected";
         }
         else
         {
             _connectionBadge.Text = "Not connected";
+            ResizeBadgeToText(_connectionBadge);
             _connectionBadge.BackColor = _secondaryColor;
             _userStatusLabel.Text = "No user connected";
         }
@@ -313,27 +344,32 @@ internal sealed class MainForm : Form
         if (e.SimConnected)
         {
             _simBadge.Text = "Simulator connected";
+            ResizeBadgeToText(_simBadge);
             _simBadge.BackColor = Color.FromArgb(60, 76, 217, 100);
         }
         else
         {
             _simBadge.Text = "Simulator offline";
+            ResizeBadgeToText(_simBadge);
             _simBadge.BackColor = _secondaryColor;
         }
 
         if (e.FlightLoaded)
         {
             _flightBadge.Text = "Flight active";
+            ResizeBadgeToText(_flightBadge);
             _flightBadge.BackColor = Color.FromArgb(60, 76, 217, 100);
         }
         else if (e.SimConnected)
         {
             _flightBadge.Text = "Simulator running";
+            ResizeBadgeToText(_flightBadge);
             _flightBadge.BackColor = Color.FromArgb(60, 22, 187, 215);
         }
         else
         {
             _flightBadge.Text = "Flight inactive";
+            ResizeBadgeToText(_flightBadge);
             _flightBadge.BackColor = _secondaryColor;
         }
     }
@@ -422,7 +458,7 @@ internal sealed class RoundedButton : Button
         pevent.Graphics.FillPath(brush, path);
 
         TextRenderer.DrawText(pevent.Graphics, Text, Font, ClientRectangle, ForeColor,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
@@ -477,7 +513,8 @@ internal sealed class BadgeLabel : Label
         using var brush = new SolidBrush(BackColor);
         e.Graphics.FillPath(brush, path);
 
-        TextRenderer.DrawText(e.Graphics, Text, Font, new Rectangle(0, 0, Width, Height), ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        TextRenderer.DrawText(e.Graphics, Text, Font, new Rectangle(0, 0, Width, Height), ForeColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
