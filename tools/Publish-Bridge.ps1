@@ -17,7 +17,8 @@ $exeName = 'OpensquawkBridge-msfs.exe'
 $exePath = Join-Path $publishFolder $exeName
 $depsFolder = Join-Path $publishFolder 'deps'
 $libsSource = Join-Path $repoRoot 'libs'
- $nativeLibsToKeep = @('SimConnect.dll', 'Microsoft.FlightSimulator.SimConnect.dll')
+$nativeLibsToKeep = @('SimConnect.dll', 'Microsoft.FlightSimulator.SimConnect.dll')
+$filesToKeepInRoot = @('.env', '.env.example')
 
 function Invoke-DotNetCommand {
     param(
@@ -52,7 +53,10 @@ try {
     }
 
     Get-ChildItem -Path $publishFolder | Where-Object {
-        $_.Name -ne $exeName -and $_.Name -ne 'deps' -and ($nativeLibsToKeep -notcontains $_.Name)
+        $_.Name -ne $exeName -and
+        $_.Name -ne 'deps' -and
+        ($nativeLibsToKeep -notcontains $_.Name) -and
+        ($filesToKeepInRoot -notcontains $_.Name)
     } | ForEach-Object {
         $destination = Join-Path $depsFolder $_.Name
         if (Test-Path $destination) {

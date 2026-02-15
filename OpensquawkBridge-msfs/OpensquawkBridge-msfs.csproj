@@ -24,7 +24,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <TargetPath>.env</TargetPath>
-      <ExcludeFromSingeFile>true</ExcludeFromSingeFile>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
     <None Include="..\icon.png">
       <Link>icon.png</Link>
