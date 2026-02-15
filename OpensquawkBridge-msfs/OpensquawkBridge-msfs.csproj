@@ -17,9 +17,14 @@
   <ItemGroup>
     <None Include=".env.example">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <TargetPath>.env.example</TargetPath>
     </None>
-    <None Include=".env" Condition="Exists('.env')">
+    <None Include=".env">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <TargetPath>.env</TargetPath>
+      <ExcludeFromSingeFile>true</ExcludeFromSingeFile>
     </None>
     <None Include="..\icon.png">
       <Link>icon.png</Link>
@@ -35,7 +40,7 @@
     <ProjectReference Include="..\OpensquawkBridge.SimConnectAdapter\OpensquawkBridge.SimConnectAdapter.csproj"/>
   </ItemGroup>
 
-  <Target Name="EnsureEnvFile" BeforeTargets="BeforeBuild">
+  <Target Name="EnsureEnvFile" BeforeTargets="BeforeBuild;BeforePublish">
     <PropertyGroup>
       <EnvFile>$(ProjectDir).env</EnvFile>
       <EnvExample>$(ProjectDir).env.example</EnvExample>
