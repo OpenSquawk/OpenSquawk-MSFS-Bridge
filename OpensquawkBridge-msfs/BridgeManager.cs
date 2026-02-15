@@ -620,6 +620,7 @@ internal sealed class BridgeManager : IDisposable
 
             var payload = new
             {
+                token = _config.Token,
                 status = "active",
                 ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 latitude = Math.Round(telemetry.Latitude, 6),
@@ -676,6 +677,7 @@ internal sealed class BridgeManager : IDisposable
 
         var payload = new
         {
+            token = _config.Token,
             simConnected = _simConnected,
             flightActive = _flightLoaded
         };
@@ -773,7 +775,6 @@ internal sealed class BridgeManager : IDisposable
         try
         {
             _http.DefaultRequestHeaders.Remove("X-Bridge-Token");
-            _http.DefaultRequestHeaders.Authorization = null;
         }
         catch
         {
@@ -781,11 +782,7 @@ internal sealed class BridgeManager : IDisposable
 
         if (!string.IsNullOrWhiteSpace(_config.Token))
         {
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
-        }
-        else if (!string.IsNullOrWhiteSpace(_authToken))
-        {
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _authToken);
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("X-Bridge-Token", _config.Token);
         }
     }
 
