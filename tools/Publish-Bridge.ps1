@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$OpenExplorer,
-    [switch]$RunExecutable
+    [switch]$RunExecutable,
+    [switch]$GitPull
 )
 
 Set-StrictMode -Version Latest
@@ -31,6 +32,10 @@ function Invoke-DotNetCommand {
 
 Push-Location $repoRoot
 try {
+    if ($GitPull) {
+        Write-Host "Running: git pull" -ForegroundColor Cyan
+        & git pull
+    }
     Invoke-DotNetCommand -Arguments @('restore')
     Invoke-DotNetCommand -Arguments @('build')
     Invoke-DotNetCommand -Arguments @('publish', $projectPath, '-c', $configuration, '-r', $publishRuntime, '--self-contained', 'true')
