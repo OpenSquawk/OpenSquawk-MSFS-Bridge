@@ -167,26 +167,38 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         try
         {
             Log?.Invoke(this, new LogMessageEventArgs("SimConnect loop task started."));
-            try
-            {
-                InitializeSimConnect();
-            }
-            catch (Exception ex)
-            {
-                Log?.Invoke(this, new LogMessageEventArgs($"SimConnect init failed: {ex.Message}"));
-                return;
-            }
-
             while (!token.IsCancellationRequested)
             {
+                if (_sim == null)
+                {
+                    try
+                    {
+                        InitializeSimConnect();
+                    }
+                    catch (COMException ex)
+                    {
+                        Log?.Invoke(this, new LogMessageEventArgs($"SimConnect init failed (HRESULT=0x{ex.HResult:X8}): {ex.Message}. Retrying in 2s."));
+                        await Task.Delay(2000, token).ConfigureAwait(false);
+                        continue;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log?.Invoke(this, new LogMessageEventArgs($"SimConnect init failed: {ex.Message}. Retrying in 2s."));
+                        await Task.Delay(2000, token).ConfigureAwait(false);
+                        continue;
+                    }
+                }
+
                 try
                 {
                     _sim?.ReceiveMessage();
                 }
                 catch (COMException ex)
                 {
-                    Log?.Invoke(this, new LogMessageEventArgs($"SimConnect receive error: {ex.Message}"));
+                    Log?.Invoke(this, new LogMessageEventArgs($"SimConnect receive error (HRESULT=0x{ex.HResult:X8}): {ex.Message}"));
+                    Cleanup();
                     await Task.Delay(1000, token).ConfigureAwait(false);
+                    continue;
                 }
                 catch (Exception ex)
                 {
