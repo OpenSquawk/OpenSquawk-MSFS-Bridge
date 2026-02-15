@@ -10,8 +10,6 @@
     <ProjectReference Include="..\OpensquawkBridge.Abstractions\OpensquawkBridge.Abstractions.csproj" />
     <Reference Include="Microsoft.FlightSimulator.SimConnect">
       <HintPath>libs\Microsoft.FlightSimulator.SimConnect.dll</HintPath>
-      <Private>true</Private>
-      <CopyLocal>true</CopyLocal>
     </Reference>
     <None Include="libs\Microsoft.FlightSimulator.SimConnect.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -20,6 +18,7 @@
     <None Include="libs\SimConnect.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <TargetPath>SimConnect.dll</TargetPath>
     </None>
   </ItemGroup>
 

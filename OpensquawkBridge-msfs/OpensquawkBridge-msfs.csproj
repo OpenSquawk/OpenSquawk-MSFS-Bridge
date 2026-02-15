@@ -32,11 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OpensquawkBridge.SimConnectAdapter\OpensquawkBridge.SimConnectAdapter.csproj"
-                      ReferenceOutputAssembly="false"
-                      OutputItemType="Content"
-                      CopyToOutputDirectory="PreserveNewest"
-                      CopyToPublishDirectory="PreserveNewest" />
+    <ProjectReference Include="..\OpensquawkBridge.SimConnectAdapter\OpensquawkBridge.SimConnectAdapter.csproj"/>
   </ItemGroup>
 
   <Target Name="EnsureEnvFile" BeforeTargets="BeforeBuild">
