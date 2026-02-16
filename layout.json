@@ -33,7 +33,7 @@
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/bridge_shared.js",
       "size": 14187,
-      "date": "134157250693959970"
+      "date": "134157252074005070"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.css",
@@ -68,7 +68,7 @@
     {
       "path": "manifest.json",
       "size": 375,
-      "date": "134157249825819980"
+      "date": "134157252275620640"
     },
     {
       "path": "package.json",
@@ -78,12 +78,12 @@
     {
       "path": "README.md",
       "size": 2561,
-      "date": "134157251228162660"
+      "date": "134157252207294430"
     },
     {
       "path": "tests/bridge_shared.test.js",
-      "size": 4167,
-      "date": "134157251188544580"
+      "size": 4177,
+      "date": "134157252456485650"
     },
     {
       "path": "tools/update-package-metadata.mjs",

@@ -54,7 +54,7 @@
     });
 
     var TOKEN_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-    var TOKEN_LENGTH = 4;
+    var TOKEN_LENGTH = 6;
 
     function normalizePropertyName(name) {
         return String(name || "")
