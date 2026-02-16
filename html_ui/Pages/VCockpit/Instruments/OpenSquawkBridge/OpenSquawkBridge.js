@@ -983,6 +983,7 @@
         this.logger = logger;
         this.bound = false;
         this.elements = {};
+        this.clickBindings = [];
         this.maxLogRender = 350;
         this.renderedLogCount = 0;
     }
@@ -1079,7 +1080,12 @@
             return;
         }
 
-        element.addEventListener("click", function () {
+        var previousHandler = element.__osbClickHandler;
+        if (typeof previousHandler === "function") {
+            element.removeEventListener("click", previousHandler);
+        }
+
+        var clickHandler = function () {
             try {
                 handler();
             } catch (error) {
@@ -1087,7 +1093,32 @@
                     console.error(error);
                 }
             }
+        };
+
+        element.addEventListener("click", clickHandler);
+        element.__osbClickHandler = clickHandler;
+        this.clickBindings.push({
+            element: element,
+            handler: clickHandler
         });
+    };
+
+    BridgeUI.prototype.unbind = function () {
+        for (var i = 0; i < this.clickBindings.length; i++) {
+            var binding = this.clickBindings[i];
+            if (!binding || !binding.element || typeof binding.handler !== "function") {
+                continue;
+            }
+
+            binding.element.removeEventListener("click", binding.handler);
+            if (binding.element.__osbClickHandler === binding.handler) {
+                binding.element.__osbClickHandler = null;
+            }
+        }
+
+        this.clickBindings = [];
+        this.elements = {};
+        this.bound = false;
     };
 
     BridgeUI.prototype.applyBadgeState = function (element, text, stateClass) {
@@ -1251,6 +1282,7 @@
         this.http = new HttpClient(this.logger);
         this.sim = new SimVarBridge(this.logger);
         this.ui = new BridgeUI(instrument, this.logger);
+        this.flightOnlyPanelMode = this.detectFlightOnlyPanelMode();
 
         this.config = this.shared.resolveConfig(this.storage.readJson(STORAGE_KEYS.config) || {});
         this.logger.setOptions(this.config.debugMaxEntries, this.config.debugEchoToConsole);
@@ -1281,6 +1313,10 @@
             telemetryPostInFlight: false,
             debugPushInFlight: false
         };
+        this.pendingReasons = {
+            statusPost: null,
+            telemetryPost: null
+        };
 
         this.counters = {
             telemetry_reads: 0,
@@ -1290,8 +1326,10 @@
             login_connected_changes: 0,
             status_posts: 0,
             status_post_failures: 0,
+            status_post_deferred: 0,
             telemetry_posts: 0,
             telemetry_post_failures: 0,
+            telemetry_post_deferred: 0,
             telemetry_post_skipped: 0,
             command_parsed: 0,
             command_applied: 0,
@@ -1315,6 +1353,23 @@
 
         this.initialize();
     }
+
+    OpenSquawkBridgeRuntime.prototype.detectFlightOnlyPanelMode = function () {
+        if (!this.instrument) {
+            return false;
+        }
+
+        var tagName = this.instrument.tagName ? String(this.instrument.tagName).toLowerCase() : "";
+        if (tagName === "ingamepanel-opensquawk-bridge") {
+            return true;
+        }
+
+        if (typeof this.instrument.querySelector === "function" && this.instrument.querySelector("ingame-ui")) {
+            return true;
+        }
+
+        return false;
+    };
 
     OpenSquawkBridgeRuntime.prototype.initialize = function () {
         this.logger.info("runtime.boot", "OpenSquawk Bridge instrument boot", {
@@ -1364,6 +1419,8 @@
     OpenSquawkBridgeRuntime.prototype.dispose = function () {
         this.removeGlobalErrorHooks();
         this.logger.info("runtime.dispose", "Runtime disposed");
+        this.ui.unbind();
+        this.logger.onEntry = null;
     };
 
     OpenSquawkBridgeRuntime.prototype.describeEnvironment = function () {
@@ -1373,7 +1430,9 @@
             hasXmlHttpRequest: typeof XMLHttpRequest !== "undefined",
             hasCoherent: typeof Coherent !== "undefined" && !!Coherent,
             hasAbortController: typeof AbortController !== "undefined",
-            userAgent: typeof navigator !== "undefined" && navigator.userAgent ? navigator.userAgent : null
+            userAgent: typeof navigator !== "undefined" && navigator.userAgent ? navigator.userAgent : null,
+            panelTagName: this.instrument && this.instrument.tagName ? String(this.instrument.tagName) : null,
+            flightOnlyPanelMode: this.flightOnlyPanelMode
         };
     };
 
@@ -1728,8 +1787,12 @@
         this.telemetryReadCount++;
 
         this.rawSimConnected = true;
-        this.rawFlightLoaded = this.shared.isValidCoordinate(telemetry.latitude, -90, 90)
-            && this.shared.isValidCoordinate(telemetry.longitude, -180, 180);
+        if (this.flightOnlyPanelMode) {
+            this.rawFlightLoaded = true;
+        } else {
+            this.rawFlightLoaded = this.shared.isValidCoordinate(telemetry.latitude, -90, 90)
+                && this.shared.isValidCoordinate(telemetry.longitude, -180, 180);
+        }
 
         this.recomputeEffectiveSimState("telemetry-read");
 
@@ -1751,8 +1814,13 @@
     };
 
     OpenSquawkBridgeRuntime.prototype.recomputeEffectiveSimState = function (reason) {
-        var effectiveSimConnected = this.userConnected ? this.rawSimConnected : false;
-        var effectiveFlightLoaded = this.userConnected ? this.rawFlightLoaded : false;
+        var effectiveSimConnected = this.rawSimConnected;
+        var effectiveFlightLoaded = this.rawFlightLoaded;
+
+        if (!this.flightOnlyPanelMode) {
+            effectiveSimConnected = this.userConnected ? this.rawSimConnected : false;
+            effectiveFlightLoaded = this.userConnected ? this.rawFlightLoaded : false;
+        }
 
         var changed = effectiveSimConnected !== this.simConnected || effectiveFlightLoaded !== this.flightLoaded;
 
@@ -1763,6 +1831,7 @@
             this.logger.info("state.sim.changed", "Simulator state changed", {
                 reason: reason,
                 userConnected: this.userConnected,
+                flightOnlyPanelMode: this.flightOnlyPanelMode,
                 rawSimConnected: this.rawSimConnected,
                 rawFlightLoaded: this.rawFlightLoaded,
                 simConnected: this.simConnected,
@@ -1780,21 +1849,36 @@
     };
 
     OpenSquawkBridgeRuntime.prototype.forceStatusHeartbeat = function (reason) {
+        var effectiveReason = (typeof reason === "string" && reason) ? reason : "unspecified";
+
         if (this.flags.statusPostInFlight) {
-            this.logger.debug("status.post.skip", "Status post skipped because request is already in flight", {
-                reason: reason
+            this.pendingReasons.statusPost = effectiveReason;
+            this.counters.status_post_deferred++;
+            this.logger.debug("status.post.defer", "Status post deferred because request is already in flight", {
+                reason: effectiveReason
             });
             return;
         }
 
         this.flags.statusPostInFlight = true;
 
-        this.sendStatusHeartbeat(reason)
+        this.sendStatusHeartbeat(effectiveReason)
             .catch(function () {
                 // Error already logged
             })
             .finally(function () {
                 this.flags.statusPostInFlight = false;
+                var deferredReason = this.pendingReasons.statusPost;
+                this.pendingReasons.statusPost = null;
+
+                if (deferredReason !== null) {
+                    this.logger.debug("status.post.resume", "Running deferred status post after in-flight request completed", {
+                        reason: deferredReason
+                    });
+                    this.forceStatusHeartbeat("deferred:" + deferredReason);
+                    return;
+                }
+
                 this.refreshUi();
             }.bind(this));
     };
@@ -1859,33 +1943,55 @@
     };
 
     OpenSquawkBridgeRuntime.prototype.forceTelemetryTick = function (reason) {
+        var effectiveReason = (typeof reason === "string" && reason) ? reason : "unspecified";
+
         if (this.flags.telemetryPostInFlight) {
-            this.logger.debug("telemetry.post.skip", "Telemetry tick skipped because request is already in flight", {
-                reason: reason
+            this.pendingReasons.telemetryPost = effectiveReason;
+            this.counters.telemetry_post_deferred++;
+            this.logger.debug("telemetry.post.defer", "Telemetry tick deferred because request is already in flight", {
+                reason: effectiveReason
             });
             return;
         }
 
         this.flags.telemetryPostInFlight = true;
 
-        this.sendTelemetryTick(reason)
+        this.sendTelemetryTick(effectiveReason)
             .catch(function () {
                 // Error already logged
             })
             .finally(function () {
                 this.flags.telemetryPostInFlight = false;
+                var deferredReason = this.pendingReasons.telemetryPost;
+                this.pendingReasons.telemetryPost = null;
+
+                if (deferredReason !== null) {
+                    this.logger.debug("telemetry.post.resume", "Running deferred telemetry tick after in-flight request completed", {
+                        reason: deferredReason
+                    });
+                    this.forceTelemetryTick("deferred:" + deferredReason);
+                    return;
+                }
+
                 this.refreshUi();
             }.bind(this));
     };
 
     OpenSquawkBridgeRuntime.prototype.sendTelemetryTick = async function (reason) {
         if (!this.userConnected || !this.simConnected || !this.flightLoaded) {
+            var gatingReasons = [];
+            if (!this.userConnected) gatingReasons.push("user_disconnected");
+            if (!this.simConnected) gatingReasons.push("sim_disconnected");
+            if (!this.flightLoaded) gatingReasons.push("flight_inactive");
+
             this.counters.telemetry_post_skipped++;
             this.logger.debug("telemetry.post.gated", "Telemetry tick skipped due to state gating", {
                 reason: reason,
+                gatingReasons: gatingReasons,
                 userConnected: this.userConnected,
                 simConnected: this.simConnected,
-                flightLoaded: this.flightLoaded
+                flightLoaded: this.flightLoaded,
+                flightOnlyPanelMode: this.flightOnlyPanelMode
             });
             return;
         }
