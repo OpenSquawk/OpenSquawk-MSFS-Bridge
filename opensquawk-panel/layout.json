@@ -1,23 +1,58 @@
 {
   "content": [
     {
-      "path": "html_ui/InGamePanels/OpenSquawkPanel/OpenSquawkPanel.html",
-      "size": 6723,
+      "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.html",
+      "size": 6720,
       "date": 132441482909180874
     },
     {
-      "path": "html_ui/InGamePanels/OpenSquawkPanel/OpenSquawkPanel.js",
+      "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.js",
       "size": 30640,
       "date": 132441482909180874
     },
     {
-      "path": "html_ui/InGamePanels/OpenSquawkPanel/OpenSquawkPanel.css",
-      "size": 10976,
+      "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.css",
+      "size": 10964,
       "date": 132441482909180874
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_OPENSQUAWK.svg",
       "size": 705,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg",
+      "size": 705,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.png",
+      "size": 3154,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_CUSTOM_PANEL.svg",
+      "size": 705,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_CUSTOM_PANEL.png",
+      "size": 3154,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_PANEL_CUSTOM_PANEL.svg",
+      "size": 705,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_PANEL_CUSTOM_PANEL.png",
+      "size": 3154,
+      "date": 132441482909180874
+    },
+    {
+      "path": "InGamePanels/maximus-ingamepanels-custom.spb",
+      "size": 698,
       "date": 132441482909180874
     }
   ]

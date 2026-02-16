@@ -13,15 +13,15 @@ ingamepanel-opensquawk {
     overflow: hidden;
 }
 
-ingame-ui#OpenSquawkPanel {
+ingame-ui#CustomPanel {
     display: flex;
     flex-direction: column;
     width: 100% !important;
     height: 100% !important;
 }
 
-ingame-ui#OpenSquawkPanel .ingameUiContent,
-ingame-ui#OpenSquawkPanel .ingameUiWrapper {
+ingame-ui#CustomPanel .ingameUiContent,
+ingame-ui#CustomPanel .ingameUiWrapper {
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;

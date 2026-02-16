@@ -1,7 +1,9 @@
 # MSFS build output
-*.spb
 Build/
 _Temp/
+
+# Keep the SPB needed for toolbar registration
+# *.spb
 
 # OS
 .DS_Store
