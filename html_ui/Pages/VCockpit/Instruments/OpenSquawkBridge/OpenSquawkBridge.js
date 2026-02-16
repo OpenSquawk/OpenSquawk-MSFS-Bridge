@@ -863,6 +863,7 @@
 
         var telemetry = {};
         var failures = [];
+        var defaults = { number: 0, int: 0, bool: false };
 
         for (var i = 0; i < TELEMETRY_VARIABLES.length; i++) {
             var definition = TELEMETRY_VARIABLES[i];
@@ -884,6 +885,7 @@
             }
 
             if (!valueResolved) {
+                telemetry[definition.key] = defaults.hasOwnProperty(definition.parse) ? defaults[definition.parse] : 0;
                 failures.push({
                     key: definition.key,
                     error: String(lastError && lastError.message ? lastError.message : lastError)
@@ -892,8 +894,10 @@
         }
 
         if (failures.length > 0) {
-            var firstFailure = failures[0];
-            throw new Error("Telemetry read failed for " + failures.length + " variable(s). First: " + firstFailure.key + " -> " + firstFailure.error);
+            this.logger.warn("simvar.read.partial", "Some telemetry variables failed, using defaults", {
+                failureCount: failures.length,
+                failures: failures
+            });
         }
 
         return telemetry;
@@ -1523,7 +1527,11 @@
             this.forceLoginPoll("interval");
         }
 
-        if (this.userConnected && this.flightLoaded) {
+        var shouldPostActive = this.flightOnlyPanelMode
+            ? this.latestTelemetry !== null
+            : (this.userConnected && this.flightLoaded);
+
+        if (shouldPostActive) {
             if (nowMs >= this.nextActiveTickMs) {
                 this.nextActiveTickMs = nowMs + this.config.activeIntervalSec * 1000;
                 this.forceTelemetryTick("active-interval");
@@ -1891,8 +1899,8 @@
 
         var payload = {
             token: this.token,
-            simConnected: this.simConnected,
-            flightActive: this.flightLoaded
+            simConnected: this.flightOnlyPanelMode ? true : this.simConnected,
+            flightActive: this.flightOnlyPanelMode ? true : this.flightLoaded
         };
 
         this.logger.debug("status.post.prepare", "Preparing status heartbeat", {
@@ -1984,7 +1992,7 @@
     };
 
     OpenSquawkBridgeRuntime.prototype.sendTelemetryTick = async function (reason) {
-        if (!this.userConnected || !this.simConnected || !this.flightLoaded) {
+        if (!this.flightOnlyPanelMode && (!this.userConnected || !this.simConnected || !this.flightLoaded)) {
             var gatingReasons = [];
             if (!this.userConnected) gatingReasons.push("user_disconnected");
             if (!this.simConnected) gatingReasons.push("sim_disconnected");

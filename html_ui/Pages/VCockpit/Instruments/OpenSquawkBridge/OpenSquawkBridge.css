@@ -216,11 +216,16 @@
     max-height: 280px;
     overflow: auto;
     white-space: pre-wrap;
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: text;
 }
 
 .osb-log-entry {
     border-bottom: 1px solid rgba(111, 145, 200, 0.2);
     padding: 3px 0;
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 .osb-log-entry:last-child {

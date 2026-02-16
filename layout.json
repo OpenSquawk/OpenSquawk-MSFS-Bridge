@@ -2,118 +2,118 @@
   "content": [
     {
       "path": ".gitignore",
-      "size": 24,
-      "date": "134157249825751330"
+      "size": 29,
+      "date": "134157577460775780"
     },
     {
       "path": "docs/AIRCRAFT-INTEGRATION.md",
       "size": 932,
-      "date": "134157289941492000"
+      "date": "134157577402714370"
     },
     {
       "path": "docs/DEBUG-RUNBOOK.md",
       "size": 3344,
-      "date": "134157289475456960"
+      "date": "134157577402718180"
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.css",
       "size": 638,
-      "date": "134157249825779280"
+      "date": "134157577402723520"
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.html",
-      "size": 9195,
-      "date": "134157249825782060"
+      "size": 8631,
+      "date": "134157577460779100"
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.js",
       "size": 4163,
-      "date": "134157289150918400"
+      "date": "134157577402730160"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/bridge_shared.js",
-      "size": 14187,
-      "date": "134157252074005070"
+      "size": 14091,
+      "date": "134157577460795760"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.css",
-      "size": 4797,
-      "date": "134157249825794420"
+      "size": 4923,
+      "date": "134157579755031090"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.html",
-      "size": 7050,
-      "date": "134157249825798240"
+      "size": 6579,
+      "date": "134157577460782000"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.js",
-      "size": 87941,
-      "date": "134157289064663380"
+      "size": 92154,
+      "date": "134157580162457020"
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_CUSTOM_PANEL.png",
       "size": 2811,
-      "date": "134157289373799180"
+      "date": "134157577402749900"
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_CUSTOM_PANEL.svg",
       "size": 805,
-      "date": "134157289368155170"
+      "date": "134157577402753980"
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.png",
       "size": 2811,
-      "date": "134157289373737010"
+      "date": "134157577402756050"
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg",
       "size": 805,
-      "date": "134157289368083660"
+      "date": "134157577402757730"
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_PANEL_CUSTOM_PANEL.png",
       "size": 2811,
-      "date": "134157289373771250"
+      "date": "134157577402759330"
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_PANEL_CUSTOM_PANEL.svg",
       "size": 805,
-      "date": "134157289368124500"
+      "date": "134157577402762510"
     },
     {
       "path": "InGamePanels/maximus-ingamepanels-custom.spb",
       "size": 698,
-      "date": "134157249825755730"
+      "date": "134157577402701250"
     },
     {
       "path": "LEGACY-BRIDGE-FUNCTIONALITY.md",
       "size": 8378,
-      "date": "134157249825760590"
+      "date": "134157577402705630"
     },
     {
       "path": "manifest.json",
       "size": 375,
-      "date": "134157289590175570"
+      "date": "134157579912405520"
     },
     {
       "path": "package.json",
       "size": 238,
-      "date": "134157249825824000"
+      "date": "134157577402771500"
     },
     {
       "path": "README.md",
       "size": 2648,
-      "date": "134157269266553780"
+      "date": "134157577402709060"
     },
     {
       "path": "tests/bridge_shared.test.js",
-      "size": 4177,
-      "date": "134157252456485650"
+      "size": 4345,
+      "date": "134157577460798500"
     },
     {
       "path": "tools/update-package-metadata.mjs",
       "size": 2319,
-      "date": "134157249825830690"
+      "date": "134157577402778350"
     }
   ]
 }
