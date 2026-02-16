@@ -1,6 +1,6 @@
-# OpenSquawk MSFS Bridge Instrument
+# OpenSquawk MSFS Bridge In-Game Panel
 
-This package replaces the old external Windows bridge with an in-sim HTML/JS instrument that uses MSFS SimVar APIs.
+This package replaces the old external Windows bridge with an in-sim HTML/JS bridge that runs as a global MSFS toolbar panel (not tied to any aircraft panel.cfg).
 
 ## What is implemented
 - Token generation and local persistence (`opensquawk.bridge.token.v1`).
@@ -14,6 +14,11 @@ This package replaces the old external Windows bridge with an in-sim HTML/JS ins
 ## Package layout
 - `manifest.json`
 - `layout.json`
+- `InGamePanels/maximus-ingamepanels-custom.spb`
+- `html_ui/InGamePanels/CustomPanel/CustomPanel.html`
+- `html_ui/InGamePanels/CustomPanel/CustomPanel.css`
+- `html_ui/InGamePanels/CustomPanel/CustomPanel.js`
+- `html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg`
 - `html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.html`
 - `html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.css`
 - `html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/bridge_shared.js`
@@ -26,10 +31,11 @@ This package replaces the old external Windows bridge with an in-sim HTML/JS ins
 ## Install into Community folder
 1. Copy this project directory into your MSFS `Community` folder.
 2. Ensure `layout.json` and `manifest.json` are present at package root.
-3. Integrate the instrument into an aircraft panel config (see `/docs/AIRCRAFT-INTEGRATION.md`).
+3. Start MSFS and open the toolbar panel for OpenSquawk Bridge (no aircraft panel reconfiguration required).
+4. If the panel is not visible, follow `/docs/AIRCRAFT-INTEGRATION.md` troubleshooting notes.
 
 ## Runtime configuration UI
-Open the instrument page in cockpit and configure:
+Open the toolbar panel and configure:
 - Base URL, user/status/telemetry endpoints.
 - Optional bearer auth token.
 - Active/idle intervals.

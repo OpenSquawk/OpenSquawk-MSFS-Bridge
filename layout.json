@@ -3,67 +3,92 @@
     {
       "path": ".gitignore",
       "size": 24,
-      "date": "134157196569934720"
+      "date": "134157220800628260"
     },
     {
       "path": "docs/AIRCRAFT-INTEGRATION.md",
-      "size": 811,
-      "date": "134157201015683420"
+      "size": 858,
+      "date": "134157225140763220"
     },
     {
       "path": "docs/DEBUG-RUNBOOK.md",
-      "size": 2488,
-      "date": "134157201015809360"
+      "size": 2538,
+      "date": "134157225190245100"
+    },
+    {
+      "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.css",
+      "size": 638,
+      "date": "134157224470532220"
+    },
+    {
+      "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.html",
+      "size": 9195,
+      "date": "134157224798671070"
+    },
+    {
+      "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.js",
+      "size": 3900,
+      "date": "134157224471540110"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/bridge_shared.js",
       "size": 13367,
-      "date": "134157197141986820"
+      "date": "134157220800652380"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.css",
       "size": 4797,
-      "date": "134157198023514100"
+      "date": "134157220800644590"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.html",
       "size": 7050,
-      "date": "134157198022733390"
+      "date": "134157225281882340"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.js",
-      "size": 70613,
-      "date": "134157202052865630"
+      "size": 71080,
+      "date": "134157223921432620"
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg",
+      "size": 361,
+      "date": "134157224239487230"
+    },
+    {
+      "path": "InGamePanels/maximus-ingamepanels-custom.spb",
+      "size": 698,
+      "date": "134157224177502980"
     },
     {
       "path": "LEGACY-BRIDGE-FUNCTIONALITY.md",
       "size": 8378,
-      "date": "134157191975954140"
+      "date": "134157220800631820"
     },
     {
       "path": "manifest.json",
       "size": 375,
-      "date": "134157201495109100"
+      "date": "134157225240462400"
     },
     {
       "path": "package.json",
       "size": 238,
-      "date": "134157196569934510"
+      "date": "134157225478876720"
     },
     {
       "path": "README.md",
-      "size": 2060,
-      "date": "134157201015646450"
+      "size": 2483,
+      "date": "134157225014728400"
     },
     {
       "path": "tests/bridge_shared.test.js",
       "size": 3965,
-      "date": "134157201209139580"
+      "date": "134157220800667870"
     },
     {
       "path": "tools/update-package-metadata.mjs",
       "size": 2319,
-      "date": "134157201396940720"
+      "date": "134157220800670690"
     }
   ]
 }

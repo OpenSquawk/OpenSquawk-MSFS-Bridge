@@ -1,25 +1,20 @@
-# Aircraft Integration
+# Aircraft Integration (Not Required)
 
-The package provides the instrument implementation, but an aircraft still needs to reference the HTML gauge.
+The current implementation is a global MSFS toolbar panel. You do not need to edit any aircraft `panel.cfg`.
 
-## Example panel.cfg snippet
-Adjust path/index/size for your target panel:
+## Expected usage
+1. Install package into `Community`.
+2. Start MSFS.
+3. Open the OpenSquawk toolbar panel.
 
-```ini
-[VcockpitXX]
-size_mm=1024,1024
-pixel_size=1024,1024
-texture=$OpensquawkBridge
-htmlgauge00=OpenSquawkBridge/OpenSquawkBridge.html,0,0,1024,1024
-```
+## If the toolbar panel does not appear
+- Confirm these files exist in the installed package:
+  - `InGamePanels/maximus-ingamepanels-custom.spb`
+  - `html_ui/InGamePanels/CustomPanel/CustomPanel.html`
+  - `html_ui/InGamePanels/CustomPanel/CustomPanel.js`
+  - `html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg`
+- Rebuild `layout.json` after any file changes (`npm run update:layout`).
+- Restart MSFS after replacing the package.
 
-## Notes
-- The gauge path must match the folder and file names in this package.
-- If your aircraft uses a custom panel architecture, map this gauge into the correct VCockpit section.
-- Keep the instrument visible while validating startup/login/telemetry behavior.
-
-## Registration ID
-The instrument registers with:
-- `registerInstrument("opensquawk-bridge", ...)`
-
-If your panel flow requires explicit instrument IDs, use that name consistently.
+## Legacy fallback only
+The VCockpit instrument files are still present for compatibility/testing, but they are no longer the primary integration path.

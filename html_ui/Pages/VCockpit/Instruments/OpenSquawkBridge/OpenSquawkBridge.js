@@ -1884,46 +1884,54 @@
         this.refreshUi();
     };
 
-    function OpenSquawkBridgeInstrument() {
-        BaseInstrument.call(this);
-        this.runtime = null;
+    if (typeof window !== "undefined") {
+        window.OpenSquawkBridgeRuntime = OpenSquawkBridgeRuntime;
+    } else if (typeof globalThis !== "undefined") {
+        globalThis.OpenSquawkBridgeRuntime = OpenSquawkBridgeRuntime;
     }
 
-    OpenSquawkBridgeInstrument.prototype = Object.create(BaseInstrument.prototype);
-    OpenSquawkBridgeInstrument.prototype.constructor = OpenSquawkBridgeInstrument;
-
-    Object.defineProperty(OpenSquawkBridgeInstrument.prototype, "templateID", {
-        get: function () {
-            return "OpenSquawkBridgeTemplate";
-        }
-    });
-
-    OpenSquawkBridgeInstrument.prototype.connectedCallback = function () {
-        BaseInstrument.prototype.connectedCallback.call(this);
-
-        if (!this.runtime) {
-            this.runtime = new OpenSquawkBridgeRuntime(this);
-        }
-    };
-
-    OpenSquawkBridgeInstrument.prototype.disconnectedCallback = function () {
-        if (this.runtime) {
-            this.runtime.dispose();
+    if (typeof BaseInstrument !== "undefined" && typeof registerInstrument === "function") {
+        function OpenSquawkBridgeInstrument() {
+            BaseInstrument.call(this);
             this.runtime = null;
         }
 
-        if (typeof BaseInstrument.prototype.disconnectedCallback === "function") {
-            BaseInstrument.prototype.disconnectedCallback.call(this);
-        }
-    };
+        OpenSquawkBridgeInstrument.prototype = Object.create(BaseInstrument.prototype);
+        OpenSquawkBridgeInstrument.prototype.constructor = OpenSquawkBridgeInstrument;
 
-    OpenSquawkBridgeInstrument.prototype.Update = function () {
-        BaseInstrument.prototype.Update.call(this);
+        Object.defineProperty(OpenSquawkBridgeInstrument.prototype, "templateID", {
+            get: function () {
+                return "OpenSquawkBridgeTemplate";
+            }
+        });
 
-        if (this.runtime) {
-            this.runtime.update(Date.now());
-        }
-    };
+        OpenSquawkBridgeInstrument.prototype.connectedCallback = function () {
+            BaseInstrument.prototype.connectedCallback.call(this);
 
-    registerInstrument("opensquawk-bridge", OpenSquawkBridgeInstrument);
+            if (!this.runtime) {
+                this.runtime = new OpenSquawkBridgeRuntime(this);
+            }
+        };
+
+        OpenSquawkBridgeInstrument.prototype.disconnectedCallback = function () {
+            if (this.runtime) {
+                this.runtime.dispose();
+                this.runtime = null;
+            }
+
+            if (typeof BaseInstrument.prototype.disconnectedCallback === "function") {
+                BaseInstrument.prototype.disconnectedCallback.call(this);
+            }
+        };
+
+        OpenSquawkBridgeInstrument.prototype.Update = function () {
+            BaseInstrument.prototype.Update.call(this);
+
+            if (this.runtime) {
+                this.runtime.update(Date.now());
+            }
+        };
+
+        registerInstrument("opensquawk-bridge", OpenSquawkBridgeInstrument);
+    }
 })();

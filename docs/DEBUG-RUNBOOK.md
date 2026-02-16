@@ -4,6 +4,7 @@ This instrument is intentionally verbose. Use this runbook to identify where and
 
 ## 1. Startup sanity checks
 Look for log events in this order:
+1. `panel.active` (when toolbar window is opened)
 1. `runtime.boot`
 2. `storage.backend.selected`
 3. `token.loaded` or `token.generated`

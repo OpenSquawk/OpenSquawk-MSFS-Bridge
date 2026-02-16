@@ -4,7 +4,7 @@
   "title": "opensquawk-msfs-bridge",
   "manufacturer": "OpenSquawk",
   "creator": "OpenSquawk",
-  "package_version": "0.1.0",
+  "package_version": "0.2.0",
   "minimum_game_version": "1.37.0",
   "release_notes": {
     "neutral": {
@@ -12,5 +12,5 @@
       "OlderHistory": []
     }
   },
-  "total_package_size": "00000000000000116485"
+  "total_package_size": "00000000000000132264"
 }
