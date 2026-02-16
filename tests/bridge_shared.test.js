@@ -90,9 +90,12 @@ test("buildTelemetryPayload applies required conversions", () => {
     assert.equal(payload.n1_pct_2, 64.4);
 });
 
-test("resolveConfig fills endpoint defaults from base URL", () => {
+test("resolveConfig derives bridge endpoints from base URL", () => {
     const resolved = shared.resolveConfig({
         baseUrl: "https://example.test/",
+        meUrl: "https://override.test/custom-me",
+        statusUrl: "https://override.test/custom-status",
+        telemetryUrl: "https://override.test/custom-data",
         activeIntervalSec: "45",
         remoteDebugEnabled: "yes"
     });

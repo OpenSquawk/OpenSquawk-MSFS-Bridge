@@ -317,16 +317,15 @@
     function resolveConfig(raw) {
         var input = isObject(raw) ? raw : {};
         var baseUrl = sanitizeUrl(input.baseUrl || DEFAULT_CONFIG.baseUrl) || DEFAULT_CONFIG.baseUrl;
-
-        var meUrl = sanitizeUrl(input.meUrl);
-        var statusUrl = sanitizeUrl(input.statusUrl);
-        var telemetryUrl = sanitizeUrl(input.telemetryUrl);
+        var meUrl = baseUrl + "/api/bridge/me";
+        var statusUrl = baseUrl + "/api/bridge/status";
+        var telemetryUrl = baseUrl + "/api/bridge/data";
 
         return {
             baseUrl: baseUrl,
-            meUrl: meUrl || baseUrl + "/api/bridge/me",
-            statusUrl: statusUrl || baseUrl + "/api/bridge/status",
-            telemetryUrl: telemetryUrl || baseUrl + "/api/bridge/data",
+            meUrl: meUrl,
+            statusUrl: statusUrl,
+            telemetryUrl: telemetryUrl,
             authToken: typeof input.authToken === "string" ? input.authToken.trim() : "",
             activeIntervalSec: positiveInt(input.activeIntervalSec, DEFAULT_CONFIG.activeIntervalSec),
             idleIntervalSec: positiveInt(input.idleIntervalSec, DEFAULT_CONFIG.idleIntervalSec),

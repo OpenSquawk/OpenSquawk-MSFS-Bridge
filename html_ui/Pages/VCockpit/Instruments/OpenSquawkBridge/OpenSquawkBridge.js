@@ -219,7 +219,7 @@
         if (normalized.indexOf("invalid url") >= 0 || normalized.indexOf("malformed") >= 0) {
             return {
                 category: "invalid_url",
-                hint: "Request URL appears invalid. Verify base URL and endpoint fields in panel configuration."
+                hint: "Request URL appears invalid. Verify base URL in panel configuration."
             };
         }
 
@@ -1007,9 +1007,6 @@
             counters: this.instrument.querySelector("#osb-counters"),
             logs: this.instrument.querySelector("#osb-log-console"),
             inputBaseUrl: this.instrument.querySelector("#osb-base-url"),
-            inputMeUrl: this.instrument.querySelector("#osb-me-url"),
-            inputStatusUrl: this.instrument.querySelector("#osb-status-url"),
-            inputTelemetryUrl: this.instrument.querySelector("#osb-telemetry-url"),
             inputAuthToken: this.instrument.querySelector("#osb-auth-token"),
             inputRemoteDebugUrl: this.instrument.querySelector("#osb-remote-debug-url"),
             inputActiveInterval: this.instrument.querySelector("#osb-active-interval"),
@@ -1128,9 +1125,6 @@
         }
 
         if (this.elements.inputBaseUrl) this.elements.inputBaseUrl.value = config.baseUrl || "";
-        if (this.elements.inputMeUrl) this.elements.inputMeUrl.value = config.meUrl || "";
-        if (this.elements.inputStatusUrl) this.elements.inputStatusUrl.value = config.statusUrl || "";
-        if (this.elements.inputTelemetryUrl) this.elements.inputTelemetryUrl.value = config.telemetryUrl || "";
         if (this.elements.inputAuthToken) this.elements.inputAuthToken.value = config.authToken || "";
         if (this.elements.inputRemoteDebugUrl) this.elements.inputRemoteDebugUrl.value = config.remoteDebugUrl || "";
         if (this.elements.inputActiveInterval) this.elements.inputActiveInterval.value = config.activeIntervalSec;
@@ -1148,9 +1142,6 @@
     BridgeUI.prototype.collectConfigFromInputs = function () {
         return {
             baseUrl: this.elements.inputBaseUrl ? this.elements.inputBaseUrl.value : "",
-            meUrl: this.elements.inputMeUrl ? this.elements.inputMeUrl.value : "",
-            statusUrl: this.elements.inputStatusUrl ? this.elements.inputStatusUrl.value : "",
-            telemetryUrl: this.elements.inputTelemetryUrl ? this.elements.inputTelemetryUrl.value : "",
             authToken: this.elements.inputAuthToken ? this.elements.inputAuthToken.value : "",
             remoteDebugUrl: this.elements.inputRemoteDebugUrl ? this.elements.inputRemoteDebugUrl.value : "",
             activeIntervalSec: this.elements.inputActiveInterval ? this.elements.inputActiveInterval.value : "",
