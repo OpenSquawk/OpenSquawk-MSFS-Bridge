@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace OpensquawkBridge.Abstractions;
 
 public sealed class SimConnectionChangedEventArgs : EventArgs
@@ -55,6 +57,19 @@ public sealed record SimTelemetry(
     bool BrakeParkingPosition,
     bool AutopilotMaster);
 
+public enum SimControlParameter
+{
+    TransponderCode,
+    AdfActiveFrequency,
+    AdfStandbyFrequencyHz,
+    GearHandle,
+    FlapsHandleIndex,
+    ParkingBrake,
+    AutopilotMaster
+}
+
+public sealed record SimControlCommand(SimControlParameter Parameter, double Value);
+
 public interface ISimConnectAdapter : IDisposable
 {
     event EventHandler<LogMessageEventArgs>? Log;
@@ -65,5 +80,6 @@ public interface ISimConnectAdapter : IDisposable
     bool IsFlightLoaded { get; }
 
     Task StartAsync(CancellationToken token);
+    Task ApplyCommandsAsync(IReadOnlyCollection<SimControlCommand> commands, CancellationToken token = default);
     Task StopAsync();
 }

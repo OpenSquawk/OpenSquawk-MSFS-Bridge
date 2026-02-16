@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.FlightSimulator.SimConnect;
 using OpensquawkBridge.Abstractions;
@@ -30,6 +32,8 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         ParkingBrake = 0x5012,
         AutopilotMaster = 0x5013
     }
+
+    
 
     private enum Reqs : uint
     {
@@ -64,6 +68,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     private SimConnect? _sim;
     private CancellationTokenSource? _loopCts;
     private Task? _loopTask;
+    private readonly ConcurrentQueue<SimControlCommand> _pendingCommands = new();
     private bool _registered;
     private bool _streamActive;
     private bool _disposed;
@@ -113,6 +118,27 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
         Log?.Invoke(this, new LogMessageEventArgs($"Starting SimConnect adapter loop (canceled={token.IsCancellationRequested})."));
         _loopTask = Task.Run(() => RunAsync(_loopCts.Token), CancellationToken.None);
         Log?.Invoke(this, new LogMessageEventArgs("SimConnect loop task scheduled."));
+        return Task.CompletedTask;
+    }
+
+    public Task ApplyCommandsAsync(IReadOnlyCollection<SimControlCommand> commands, CancellationToken token = default)
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(SimConnectAdapter));
+        }
+
+        if (commands.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        foreach (var command in commands)
+        {
+            token.ThrowIfCancellationRequested();
+            _pendingCommands.Enqueue(command);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -206,6 +232,15 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
                     await Task.Delay(1000, token).ConfigureAwait(false);
                 }
 
+                try
+                {
+                    ProcessPendingCommands();
+                }
+                catch (Exception ex)
+                {
+                    Log?.Invoke(this, new LogMessageEventArgs($"Failed to process simulator commands: {ex.Message}"));
+                }
+
                 await Task.Delay(50, token).ConfigureAwait(false);
             }
         }
@@ -250,6 +285,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     {
         Log?.Invoke(this, new LogMessageEventArgs("Simulator closed"));
         StopStream();
+        DrainPendingCommands();
         IsConnected = false;
         IsFlightLoaded = false;
         ConnectionChanged?.Invoke(this, new SimConnectionChangedEventArgs(false, false));
@@ -274,6 +310,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
             IsFlightLoaded = false;
             ConnectionChanged?.Invoke(this, new SimConnectionChangedEventArgs(IsConnected, false));
             StopStream();
+            DrainPendingCommands();
         }
     }
 
@@ -445,6 +482,131 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
             _autopilotMaster);
 
         Telemetry?.Invoke(this, new SimTelemetryEventArgs(telemetry));
+    }
+
+    private void ProcessPendingCommands()
+    {
+        if (_pendingCommands.IsEmpty)
+        {
+            return;
+        }
+
+        if (_sim == null || !_registered || !IsConnected || !IsFlightLoaded)
+        {
+            var dropped = DrainPendingCommands();
+            if (dropped > 0 && (_sim != null || IsConnected))
+            {
+                Log?.Invoke(this, new LogMessageEventArgs($"Dropped {dropped} simulator command(s) because the simulator is not ready."));
+            }
+
+            return;
+        }
+
+        var applied = 0;
+        while (_pendingCommands.TryDequeue(out var command))
+        {
+            try
+            {
+                ApplyCommand(command);
+                applied++;
+            }
+            catch (Exception ex)
+            {
+                Log?.Invoke(this, new LogMessageEventArgs($"Failed to apply command {command.Parameter}: {ex.Message}"));
+            }
+        }
+
+        if (applied > 0)
+        {
+            Log?.Invoke(this, new LogMessageEventArgs($"Applied {applied} simulator command(s)."));
+        }
+    }
+
+    private void ApplyCommand(SimControlCommand command)
+    {
+        if (double.IsNaN(command.Value) || double.IsInfinity(command.Value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(command), $"Command value must be finite: {command.Value}");
+        }
+
+        switch (command.Parameter)
+        {
+            case SimControlParameter.TransponderCode:
+                var transponderCode = ToRoundedInt(command.Value);
+                SendIntData(Defs.TransponderCode, transponderCode);
+                _transponderCode = transponderCode;
+                break;
+
+            case SimControlParameter.AdfActiveFrequency:
+                var adfActiveFrequency = ToRoundedInt(command.Value);
+                SendIntData(Defs.AdfActiveFreq, adfActiveFrequency);
+                _adfActiveFreq = adfActiveFrequency;
+                break;
+
+            case SimControlParameter.AdfStandbyFrequencyHz:
+                SendDoubleData(Defs.AdfStandbyFreq, command.Value);
+                _adfStandbyFreq = command.Value;
+                break;
+
+            case SimControlParameter.GearHandle:
+                var gearHandle = ToBoolInt(command.Value);
+                SendIntData(Defs.GearHandle, gearHandle);
+                _gearHandle = gearHandle != 0;
+                break;
+
+            case SimControlParameter.FlapsHandleIndex:
+                var flapsHandleIndex = ToRoundedInt(command.Value);
+                SendIntData(Defs.FlapsIndex, flapsHandleIndex);
+                _flapsIndex = flapsHandleIndex;
+                break;
+
+            case SimControlParameter.ParkingBrake:
+                var parkingBrake = ToBoolInt(command.Value);
+                SendIntData(Defs.ParkingBrake, parkingBrake);
+                _parkingBrake = parkingBrake != 0;
+                break;
+
+            case SimControlParameter.AutopilotMaster:
+                var autopilotMaster = ToBoolInt(command.Value);
+                SendIntData(Defs.AutopilotMaster, autopilotMaster);
+                _autopilotMaster = autopilotMaster != 0;
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(command), command.Parameter, "Unsupported simulator command.");
+        }
+    }
+
+    private void SendIntData(Defs definition, int value)
+    {
+        _sim!.SetDataOnSimObject(definition, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_DATA_SET_FLAG.DEFAULT, value);
+    }
+    SIMCONNECT_DATA_
+
+    private void SendDoubleData(Defs definition, double value)
+    {
+        _sim!.SetDataOnSimObject(definition, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_DATA_SET_FLAG.DEFAULT, value);
+    }
+
+    private static int ToBoolInt(double value)
+    {
+        return value >= 0.5d ? 1 : 0;
+    }
+
+    private static int ToRoundedInt(double value)
+    {
+        return (int)Math.Round(value, MidpointRounding.AwayFromZero);
+    }
+
+    private int DrainPendingCommands()
+    {
+        var count = 0;
+        while (_pendingCommands.TryDequeue(out _))
+        {
+            count++;
+        }
+
+        return count;
     }
 
     private void OnRecvException(SimConnect sender, SIMCONNECT_RECV_EXCEPTION data)
@@ -648,6 +810,7 @@ public sealed class SimConnectAdapter : ISimConnectAdapter
     private void Cleanup()
     {
         StopStream();
+        DrainPendingCommands();
 
         if (_sim != null)
         {

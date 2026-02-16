@@ -1,6 +1,8 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -30,6 +32,14 @@ internal sealed class BridgeManager : IDisposable
     private readonly bool _ignoreSimLoadErrors;
 
     private readonly object _telemetryLock = new();
+    private static readonly string[] TelemetryCommandContainerKeys =
+    {
+        "keys",
+        "commands",
+        "sim",
+        "simvars",
+        "controls"
+    };
 
     private CancellationTokenSource? _pollCts;
     private Task? _pollTask;
@@ -702,12 +712,397 @@ internal sealed class BridgeManager : IDisposable
             if (!response.IsSuccessStatusCode)
             {
                 LogMessage($"⚠️ {context} POST failed: {(int)response.StatusCode} {response.ReasonPhrase}");
+                return;
+            }
+
+            if (string.Equals(context, "Telemetry", StringComparison.OrdinalIgnoreCase))
+            {
+                await ApplyTelemetryCommandsFromResponseAsync(response).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
         {
             LogMessage($"❌ {context} POST error: {ex.Message}");
         }
+    }
+
+    private async Task ApplyTelemetryCommandsFromResponseAsync(HttpResponseMessage response)
+    {
+        var adapter = _simHandle?.Adapter;
+        if (adapter == null)
+        {
+            return;
+        }
+
+        string responseBody;
+        try
+        {
+            responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"⚠️ Failed to read telemetry response: {ex.Message}");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(responseBody))
+        {
+            return;
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(responseBody);
+        }
+        catch (JsonException)
+        {
+            return;
+        }
+
+        using (document)
+        {
+            var commands = ParseSimControlCommands(document.RootElement);
+            if (commands.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await adapter.ApplyCommandsAsync(commands).ConfigureAwait(false);
+                LogMessage($"Applied {commands.Count} simulator command(s) from telemetry response.");
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"⚠️ Failed to apply simulator commands: {ex.Message}");
+            }
+        }
+    }
+
+    private static List<SimControlCommand> ParseSimControlCommands(JsonElement root)
+    {
+        var values = new Dictionary<SimControlParameter, double>();
+
+        CollectSimControlCommands(root, values);
+
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var containerKey in TelemetryCommandContainerKeys)
+            {
+                if (TryGetPropertyIgnoreCase(root, containerKey, out var nested))
+                {
+                    CollectSimControlCommands(nested, values);
+                }
+            }
+        }
+
+        var commands = new List<SimControlCommand>(values.Count);
+        foreach (var value in values)
+        {
+            commands.Add(new SimControlCommand(value.Key, value.Value));
+        }
+
+        return commands;
+    }
+
+    private static void CollectSimControlCommands(JsonElement element, Dictionary<SimControlParameter, double> values)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (!TryMapSimControlParameter(property.Name, out var parameter))
+            {
+                continue;
+            }
+
+            if (!TryParseSimControlValue(parameter, property.Value, out var parsedValue))
+            {
+                continue;
+            }
+
+            values[parameter] = parsedValue;
+        }
+    }
+
+    private static bool TryMapSimControlParameter(string propertyName, out SimControlParameter parameter)
+    {
+        parameter = default;
+
+        var normalized = propertyName.Trim().Replace("-", "_", StringComparison.Ordinal).ToLowerInvariant();
+        switch (normalized)
+        {
+            case "transponder_code":
+            case "transponder":
+            case "xpdr":
+            case "squawk":
+                parameter = SimControlParameter.TransponderCode;
+                return true;
+            case "adf_active_freq":
+            case "adf_active_frequency":
+                parameter = SimControlParameter.AdfActiveFrequency;
+                return true;
+            case "adf_standby_freq_hz":
+            case "adf_standby_frequency_hz":
+            case "adf_standby_freq":
+                parameter = SimControlParameter.AdfStandbyFrequencyHz;
+                return true;
+            case "gear_handle":
+                parameter = SimControlParameter.GearHandle;
+                return true;
+            case "flaps_index":
+            case "flaps_handle_index":
+                parameter = SimControlParameter.FlapsHandleIndex;
+                return true;
+            case "parking_brake":
+                parameter = SimControlParameter.ParkingBrake;
+                return true;
+            case "autopilot_master":
+                parameter = SimControlParameter.AutopilotMaster;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryParseSimControlValue(SimControlParameter parameter, JsonElement element, out double value)
+    {
+        value = 0;
+
+        switch (parameter)
+        {
+            case SimControlParameter.GearHandle:
+            case SimControlParameter.ParkingBrake:
+            case SimControlParameter.AutopilotMaster:
+                if (!TryParseBooleanValue(element, out var boolValue))
+                {
+                    return false;
+                }
+
+                value = boolValue ? 1 : 0;
+                return true;
+
+            case SimControlParameter.TransponderCode:
+            case SimControlParameter.AdfActiveFrequency:
+            case SimControlParameter.FlapsHandleIndex:
+                if (!TryParseIntegerValue(element, out var intValue))
+                {
+                    return false;
+                }
+
+                if (parameter == SimControlParameter.FlapsHandleIndex && intValue < 0)
+                {
+                    return false;
+                }
+
+                value = intValue;
+                return true;
+
+            case SimControlParameter.AdfStandbyFrequencyHz:
+                if (!TryParseNumberValue(element, out var doubleValue))
+                {
+                    return false;
+                }
+
+                if (doubleValue < 0)
+                {
+                    return false;
+                }
+
+                value = doubleValue;
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryParseNumberValue(JsonElement element, out double value)
+    {
+        value = 0;
+
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Number:
+                return element.TryGetDouble(out value) && !double.IsNaN(value) && !double.IsInfinity(value);
+
+            case JsonValueKind.String:
+                var text = element.GetString();
+                return !string.IsNullOrWhiteSpace(text)
+                       && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value)
+                       && !double.IsNaN(value)
+                       && !double.IsInfinity(value);
+
+            case JsonValueKind.True:
+                value = 1;
+                return true;
+
+            case JsonValueKind.False:
+                value = 0;
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryParseIntegerValue(JsonElement element, out int value)
+    {
+        value = 0;
+
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Number:
+                if (element.TryGetInt32(out value))
+                {
+                    return true;
+                }
+
+                if (!element.TryGetDouble(out var number)
+                    || double.IsNaN(number)
+                    || double.IsInfinity(number)
+                    || !IsWholeNumber(number)
+                    || number < int.MinValue
+                    || number > int.MaxValue)
+                {
+                    return false;
+                }
+
+                value = (int)number;
+                return true;
+
+            case JsonValueKind.String:
+                var text = element.GetString();
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return false;
+                }
+
+                if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
+                {
+                    return true;
+                }
+
+                if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+                    || double.IsNaN(parsed)
+                    || double.IsInfinity(parsed)
+                    || !IsWholeNumber(parsed)
+                    || parsed < int.MinValue
+                    || parsed > int.MaxValue)
+                {
+                    return false;
+                }
+
+                value = (int)parsed;
+                return true;
+
+            case JsonValueKind.True:
+                value = 1;
+                return true;
+
+            case JsonValueKind.False:
+                value = 0;
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryParseBooleanValue(JsonElement element, out bool value)
+    {
+        value = false;
+
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.True:
+                value = true;
+                return true;
+
+            case JsonValueKind.False:
+                value = false;
+                return true;
+
+            case JsonValueKind.Number:
+                if (!element.TryGetDouble(out var number)
+                    || double.IsNaN(number)
+                    || double.IsInfinity(number))
+                {
+                    return false;
+                }
+
+                if (Math.Abs(number) < double.Epsilon)
+                {
+                    value = false;
+                    return true;
+                }
+
+                if (Math.Abs(number - 1d) < double.Epsilon)
+                {
+                    value = true;
+                    return true;
+                }
+
+                return false;
+
+            case JsonValueKind.String:
+                var text = element.GetString()?.Trim();
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return false;
+                }
+
+                switch (text.ToLowerInvariant())
+                {
+                    case "1":
+                    case "true":
+                    case "yes":
+                    case "on":
+                        value = true;
+                        return true;
+                    case "0":
+                    case "false":
+                    case "no":
+                    case "off":
+                        value = false;
+                        return true;
+                    default:
+                        return false;
+                }
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryGetPropertyIgnoreCase(JsonElement element, string propertyName, out JsonElement value)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            value = default;
+            return false;
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (property.Name.Equals(propertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                value = property.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static bool IsWholeNumber(double value)
+    {
+        return Math.Abs(value - Math.Round(value, MidpointRounding.AwayFromZero)) < 0.0000001d;
     }
 
     private async Task<BridgeUser?> FetchUserAsync()
@@ -874,3 +1269,5 @@ internal sealed class BridgeLogEventArgs : EventArgs
     public string Message { get; }
     public DateTimeOffset Timestamp { get; }
 }
+
+
