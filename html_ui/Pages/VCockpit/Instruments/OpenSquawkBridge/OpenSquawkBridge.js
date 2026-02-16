@@ -1852,11 +1852,14 @@
         var effectiveReason = (typeof reason === "string" && reason) ? reason : "unspecified";
 
         if (this.flags.statusPostInFlight) {
+            var hadDeferredStatus = this.pendingReasons.statusPost !== null;
             this.pendingReasons.statusPost = effectiveReason;
-            this.counters.status_post_deferred++;
-            this.logger.debug("status.post.defer", "Status post deferred because request is already in flight", {
-                reason: effectiveReason
-            });
+            if (!hadDeferredStatus) {
+                this.counters.status_post_deferred++;
+                this.logger.debug("status.post.defer", "Status post deferred because request is already in flight", {
+                    reason: effectiveReason
+                });
+            }
             return;
         }
 
@@ -1946,11 +1949,14 @@
         var effectiveReason = (typeof reason === "string" && reason) ? reason : "unspecified";
 
         if (this.flags.telemetryPostInFlight) {
+            var hadDeferredTelemetry = this.pendingReasons.telemetryPost !== null;
             this.pendingReasons.telemetryPost = effectiveReason;
-            this.counters.telemetry_post_deferred++;
-            this.logger.debug("telemetry.post.defer", "Telemetry tick deferred because request is already in flight", {
-                reason: effectiveReason
-            });
+            if (!hadDeferredTelemetry) {
+                this.counters.telemetry_post_deferred++;
+                this.logger.debug("telemetry.post.defer", "Telemetry tick deferred because request is already in flight", {
+                    reason: effectiveReason
+                });
+            }
             return;
         }
 
@@ -2026,7 +2032,8 @@
             return;
         }
 
-        await this.sendStatusHeartbeat("pre-telemetry:" + reason);
+        // Keep status heartbeats current, but do not block telemetry transmission on status latency/timeouts.
+        this.forceStatusHeartbeat("pre-telemetry:" + reason);
 
         var payload = this.shared.buildTelemetryPayload(this.token, this.latestTelemetry);
         this.counters.telemetry_posts++;
