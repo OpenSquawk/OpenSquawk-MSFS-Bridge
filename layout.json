@@ -22,13 +22,13 @@
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.html",
-      "size": 8631,
-      "date": "134157577460779100"
+      "size": 9093,
+      "date": "134157591414651360"
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.js",
-      "size": 4163,
-      "date": "134157577402730160"
+      "size": 4647,
+      "date": "134157591557866190"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/bridge_shared.js",
@@ -37,8 +37,8 @@
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.css",
-      "size": 4923,
-      "date": "134157579755031090"
+      "size": 9893,
+      "date": "134157591086626430"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.html",
@@ -93,7 +93,7 @@
     {
       "path": "manifest.json",
       "size": 375,
-      "date": "134157580259137620"
+      "date": "134157589704062370"
     },
     {
       "path": "package.json",

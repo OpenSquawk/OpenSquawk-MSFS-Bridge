@@ -13,6 +13,7 @@ class IngamePanelOpenSquawkBridge extends TemplateElement {
 
         this.ingameUi = this.querySelector("ingame-ui");
         this.bindPanelEvents();
+        this.bindCollapsibleSections();
         this.ensureRuntime("connectedCallback");
     }
 
@@ -56,6 +57,18 @@ class IngamePanelOpenSquawkBridge extends TemplateElement {
         this.ingameUi.addEventListener("onResizeElement", () => {
             this.log("debug", "panel.resize", "Toolbar panel resized");
         });
+    }
+
+    bindCollapsibleSections() {
+        var panels = this.querySelectorAll(".osb-panel-collapsible h2");
+        for (var i = 0; i < panels.length; i++) {
+            panels[i].addEventListener("click", function (e) {
+                var section = e.currentTarget.closest(".osb-panel-collapsible");
+                if (section) {
+                    section.classList.toggle("osb-collapsed");
+                }
+            });
+        }
     }
 
     ensureRuntime(reason) {

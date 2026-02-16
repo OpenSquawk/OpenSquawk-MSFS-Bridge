@@ -25,11 +25,11 @@
             <div id="osb-root">
                 <header id="osb-header">
                     <div class="osb-title-wrap">
-                        <h1>OpenSquawk Bridge (Global Panel)</h1>
-                        <p class="osb-subtitle">Aircraft-independent MSFS SimVar bridge with deep runtime tracing</p>
+                        <h1>OpenSquawk Bridge</h1>
+                        <p class="osb-subtitle">MSFS SimVar bridge &middot; real-time telemetry &amp; command relay</p>
                     </div>
                     <div id="osb-runtime-meta">
-                        <span id="osb-build-label">build: 0.3.0/custompanel</span>
+                        <span id="osb-build-label">v0.3.0</span>
                         <span id="osb-runtime-uptime">uptime: 0s</span>
                     </div>
                 </header>
@@ -58,7 +58,7 @@
                 </section>
 
                 <section class="osb-panel">
-                    <h2>Token And Login</h2>
+                    <h2>Token &amp; Login</h2>
                     <div class="osb-form-grid">
                         <label>
                             <span>Token</span>
@@ -70,87 +70,91 @@
                         </label>
                     </div>
                     <div class="osb-button-row">
-                        <button id="osb-btn-open-login" type="button">Open Login URL</button>
+                        <button id="osb-btn-open-login" type="button" class="osb-btn-primary">Open Login URL</button>
                         <button id="osb-btn-copy-login" type="button">Copy Login URL</button>
-                        <button id="osb-btn-new-token" type="button">Generate New Token</button>
+                        <button id="osb-btn-new-token" type="button" class="osb-btn-danger">New Token</button>
                         <button id="osb-btn-force-login-poll" type="button">Force Login Poll</button>
                     </div>
                 </section>
 
-                <section class="osb-panel">
-                    <h2>Bridge Configuration</h2>
-                    <div class="osb-form-grid">
-                        <label>
-                            <span>Base URL</span>
-                            <input id="osb-base-url" type="text" />
-                        </label>
-                        <label>
-                            <span>Auth Token (optional)</span>
-                            <input id="osb-auth-token" type="password" />
-                        </label>
-                        <label>
-                            <span>Remote Debug Endpoint (optional)</span>
-                            <input id="osb-remote-debug-url" type="text" />
-                        </label>
-                        <label>
-                            <span>Active Interval (sec)</span>
-                            <input id="osb-active-interval" type="number" min="1" step="1" />
-                        </label>
-                        <label>
-                            <span>Idle Interval (sec)</span>
-                            <input id="osb-idle-interval" type="number" min="1" step="1" />
-                        </label>
-                        <label>
-                            <span>Login Poll (sec)</span>
-                            <input id="osb-login-poll" type="number" min="1" step="1" />
-                        </label>
-                        <label>
-                            <span>Telemetry Read Rate (Hz)</span>
-                            <input id="osb-read-hz" type="number" min="1" step="1" />
-                        </label>
-                        <label>
-                            <span>Stale Telemetry Limit (sec)</span>
-                            <input id="osb-stale-seconds" type="number" min="1" step="1" />
-                        </label>
-                        <label>
-                            <span>HTTP Timeout (ms)</span>
-                            <input id="osb-timeout-ms" type="number" min="100" step="100" />
-                        </label>
-                        <label class="osb-checkbox">
-                            <input id="osb-remote-debug-enabled" type="checkbox" />
-                            <span>Enable periodic remote debug upload</span>
-                        </label>
-                        <label class="osb-checkbox">
-                            <input id="osb-auto-open-login" type="checkbox" />
-                            <span>Auto-open login URL on startup</span>
-                        </label>
-                        <label class="osb-checkbox">
-                            <input id="osb-sim-command-enabled" type="checkbox" />
-                            <span>Apply simulator commands from telemetry response</span>
-                        </label>
-                        <label class="osb-checkbox">
-                            <input id="osb-debug-console" type="checkbox" />
-                            <span>Echo debug logs to JS console</span>
-                        </label>
-                    </div>
-                    <div class="osb-button-row">
-                        <button id="osb-btn-save-config" type="button">Save Configuration</button>
-                        <button id="osb-btn-force-status" type="button">Force Status Heartbeat</button>
-                        <button id="osb-btn-force-telemetry" type="button">Force Telemetry Tick</button>
-                        <button id="osb-btn-push-debug" type="button">Push Debug Snapshot</button>
+                <section class="osb-panel osb-panel-collapsible osb-collapsed">
+                    <h2>Configuration</h2>
+                    <div class="osb-collapsible-body">
+                        <div class="osb-form-grid">
+                            <label>
+                                <span>Base URL</span>
+                                <input id="osb-base-url" type="text" />
+                            </label>
+                            <label>
+                                <span>Auth Token (optional)</span>
+                                <input id="osb-auth-token" type="password" />
+                            </label>
+                            <label>
+                                <span>Remote Debug Endpoint</span>
+                                <input id="osb-remote-debug-url" type="text" />
+                            </label>
+                            <label>
+                                <span>Active Interval (sec)</span>
+                                <input id="osb-active-interval" type="number" min="1" step="1" />
+                            </label>
+                            <label>
+                                <span>Idle Interval (sec)</span>
+                                <input id="osb-idle-interval" type="number" min="1" step="1" />
+                            </label>
+                            <label>
+                                <span>Login Poll (sec)</span>
+                                <input id="osb-login-poll" type="number" min="1" step="1" />
+                            </label>
+                            <label>
+                                <span>Telemetry Read Rate (Hz)</span>
+                                <input id="osb-read-hz" type="number" min="1" step="1" />
+                            </label>
+                            <label>
+                                <span>Stale Telemetry Limit (sec)</span>
+                                <input id="osb-stale-seconds" type="number" min="1" step="1" />
+                            </label>
+                            <label>
+                                <span>HTTP Timeout (ms)</span>
+                                <input id="osb-timeout-ms" type="number" min="100" step="100" />
+                            </label>
+                            <label class="osb-checkbox">
+                                <input id="osb-remote-debug-enabled" type="checkbox" />
+                                <span>Remote debug upload</span>
+                            </label>
+                            <label class="osb-checkbox">
+                                <input id="osb-auto-open-login" type="checkbox" />
+                                <span>Auto-open login on startup</span>
+                            </label>
+                            <label class="osb-checkbox">
+                                <input id="osb-sim-command-enabled" type="checkbox" />
+                                <span>Apply sim commands from response</span>
+                            </label>
+                            <label class="osb-checkbox">
+                                <input id="osb-debug-console" type="checkbox" />
+                                <span>Echo logs to JS console</span>
+                            </label>
+                        </div>
+                        <div class="osb-button-row">
+                            <button id="osb-btn-save-config" type="button" class="osb-btn-primary">Save Configuration</button>
+                            <button id="osb-btn-force-status" type="button">Force Status Heartbeat</button>
+                            <button id="osb-btn-force-telemetry" type="button">Force Telemetry Tick</button>
+                            <button id="osb-btn-push-debug" type="button">Push Debug Snapshot</button>
+                        </div>
                     </div>
                 </section>
 
-                <section class="osb-panel">
+                <section class="osb-panel osb-panel-collapsible">
                     <h2>Counters</h2>
-                    <div id="osb-counters" class="osb-counters-grid"></div>
+                    <div class="osb-collapsible-body">
+                        <div id="osb-counters" class="osb-counters-grid"></div>
+                    </div>
                 </section>
 
                 <section class="osb-panel">
                     <h2>Trace Console</h2>
                     <div class="osb-button-row">
                         <button id="osb-btn-export-logs" type="button">Export Logs JSON</button>
-                        <button id="osb-btn-clear-logs" type="button">Clear Console</button>
+                        <button id="osb-btn-clear-logs" type="button" class="osb-btn-danger">Clear Console</button>
                     </div>
                     <div id="osb-log-console"></div>
                 </section>
