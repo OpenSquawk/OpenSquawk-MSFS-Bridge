@@ -856,8 +856,12 @@
         return number;
     };
 
-    SimVarBridge.prototype.readTelemetry = function () {
+    SimVarBridge.prototype.readTelemetry = function (tolerateMissingApi) {
         if (!this.hasApi()) {
+            if (tolerateMissingApi) {
+                this.logger.debug("simvar.read.no_api", "SimVar API unavailable, returning empty telemetry");
+                return this.buildEmptyTelemetry();
+            }
             throw new Error("SimVar API unavailable");
         }
 
@@ -900,6 +904,16 @@
             });
         }
 
+        return telemetry;
+    };
+
+    SimVarBridge.prototype.buildEmptyTelemetry = function () {
+        var defaults = { number: 0, int: 0, bool: false };
+        var telemetry = {};
+        for (var i = 0; i < TELEMETRY_VARIABLES.length; i++) {
+            var def = TELEMETRY_VARIABLES[i];
+            telemetry[def.key] = defaults.hasOwnProperty(def.parse) ? defaults[def.parse] : 0;
+        }
         return telemetry;
     };
 
@@ -1775,7 +1789,7 @@
         var telemetry;
 
         try {
-            telemetry = this.sim.readTelemetry();
+            telemetry = this.sim.readTelemetry(this.flightOnlyPanelMode);
         } catch (error) {
             this.counters.telemetry_read_failures++;
             this.rawSimConnected = false;
@@ -1953,8 +1967,31 @@
         });
     };
 
+    OpenSquawkBridgeRuntime.prototype.canSendTelemetry = function () {
+        if (!this.flightOnlyPanelMode && (!this.userConnected || !this.simConnected || !this.flightLoaded)) {
+            return false;
+        }
+        if (!this.latestTelemetry) {
+            return false;
+        }
+        return true;
+    };
+
     OpenSquawkBridgeRuntime.prototype.forceTelemetryTick = function (reason) {
         var effectiveReason = (typeof reason === "string" && reason) ? reason : "unspecified";
+
+        if (!this.canSendTelemetry()) {
+            this.counters.telemetry_post_skipped++;
+            this.logger.debug("telemetry.post.skipped", "Telemetry tick skipped (preconditions not met)", {
+                reason: effectiveReason,
+                hasLatestTelemetry: this.latestTelemetry !== null,
+                flightOnlyPanelMode: this.flightOnlyPanelMode,
+                userConnected: this.userConnected,
+                simConnected: this.simConnected,
+                flightLoaded: this.flightLoaded
+            });
+            return;
+        }
 
         if (this.flags.telemetryPostInFlight) {
             var hadDeferredTelemetry = this.pendingReasons.telemetryPost !== null;
@@ -1992,54 +2029,6 @@
     };
 
     OpenSquawkBridgeRuntime.prototype.sendTelemetryTick = async function (reason) {
-        if (!this.flightOnlyPanelMode && (!this.userConnected || !this.simConnected || !this.flightLoaded)) {
-            var gatingReasons = [];
-            if (!this.userConnected) gatingReasons.push("user_disconnected");
-            if (!this.simConnected) gatingReasons.push("sim_disconnected");
-            if (!this.flightLoaded) gatingReasons.push("flight_inactive");
-
-            this.counters.telemetry_post_skipped++;
-            this.logger.debug("telemetry.post.gated", "Telemetry tick skipped due to state gating", {
-                reason: reason,
-                gatingReasons: gatingReasons,
-                userConnected: this.userConnected,
-                simConnected: this.simConnected,
-                flightLoaded: this.flightLoaded,
-                flightOnlyPanelMode: this.flightOnlyPanelMode
-            });
-            return;
-        }
-
-        if (!this.latestTelemetry) {
-            this.counters.telemetry_post_skipped++;
-            this.logger.debug("telemetry.post.gated", "Telemetry tick skipped because telemetry is unavailable", {
-                reason: reason
-            });
-            return;
-        }
-
-        var ageMs = Date.now() - this.latestTelemetryTsMs;
-        if (ageMs > this.config.staleTelemetrySec * 1000) {
-            this.counters.telemetry_post_skipped++;
-            this.logger.warn("telemetry.post.gated", "Telemetry tick skipped because telemetry is stale", {
-                reason: reason,
-                ageMs: ageMs,
-                staleLimitMs: this.config.staleTelemetrySec * 1000
-            });
-            return;
-        }
-
-        if (!this.shared.isValidCoordinate(this.latestTelemetry.latitude, -90, 90)
-            || !this.shared.isValidCoordinate(this.latestTelemetry.longitude, -180, 180)) {
-            this.counters.telemetry_post_skipped++;
-            this.logger.warn("telemetry.post.gated", "Telemetry tick skipped because coordinates are invalid", {
-                reason: reason,
-                latitude: this.latestTelemetry.latitude,
-                longitude: this.latestTelemetry.longitude
-            });
-            return;
-        }
-
         // Keep status heartbeats current, but do not block telemetry transmission on status latency/timeouts.
         this.forceStatusHeartbeat("pre-telemetry:" + reason);
 
