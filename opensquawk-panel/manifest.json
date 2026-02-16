@@ -1,0 +1,21 @@
+{
+  "dependencies": [
+    {
+      "name": "fs-base-ui",
+      "package_version": "0.1.10"
+    }
+  ],
+  "content_type": "MISC",
+  "title": "OpenSquawk Bridge",
+  "manufacturer": "OpenSquawk",
+  "creator": "OpenSquawk",
+  "package_version": "1.0.0",
+  "minimum_game_version": "1.8.3",
+  "release_notes": {
+    "neutral": {
+      "LastUpdate": "InGamePanel toolbar bridge for OpenSquawk network",
+      "OlderHistory": ""
+    }
+  },
+  "total_package_size": "00000000000000000000"
+}

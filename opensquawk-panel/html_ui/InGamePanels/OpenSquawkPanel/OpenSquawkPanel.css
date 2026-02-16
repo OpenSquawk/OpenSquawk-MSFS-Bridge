@@ -1,0 +1,341 @@
+/* OpenSquawk Panel – MSFS InGamePanel Dark Theme */
+
+/* ---- Base ---- */
+ingamepanel-opensquawk {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    color: #e0e0e0;
+    background: #0d1117;
+    overflow: hidden;
+}
+
+ingame-ui#OpenSquawkPanel {
+    display: flex;
+    flex-direction: column;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+ingame-ui#OpenSquawkPanel .ingameUiContent,
+ingame-ui#OpenSquawkPanel .ingameUiWrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    flex: 1 1 auto !important;
+}
+
+.osq-hidden { display: none !important; }
+
+/* ---- Header ---- */
+#osq-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #161b22;
+    border-bottom: 1px solid #21262d;
+}
+
+#osq-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #16bbd7;
+    letter-spacing: 0.5px;
+}
+
+#osq-logo {
+    font-size: 16px;
+    margin-right: 4px;
+}
+
+#osq-header-right {
+    display: flex;
+    gap: 4px;
+}
+
+/* ---- Buttons ---- */
+button {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 6px;
+    transition: background 0.15s, color 0.15s;
+}
+
+button:hover {
+    background: #30363d;
+    color: #e0e0e0;
+}
+
+button:active {
+    background: #16bbd7;
+    color: #0d1117;
+}
+
+#osq-debug-toggle {
+    font-size: 14px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+#osq-debug-toggle.osq-debug-on {
+    background: #16bbd7;
+    color: #0d1117;
+    border-color: #16bbd7;
+}
+
+/* ---- Status badges ---- */
+#osq-status-bar {
+    display: flex;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #0d1117;
+    border-bottom: 1px solid #161b22;
+}
+
+.osq-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #21262d;
+    color: #484f58;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
+}
+
+.osq-badge-ok {
+    background: #0d3028;
+    color: #3fb950;
+}
+
+.osq-badge-active {
+    background: #0a2d42;
+    color: #16bbd7;
+}
+
+.osq-badge-off {
+    background: #21262d;
+    color: #484f58;
+}
+
+/* ---- Auth section ---- */
+#osq-auth-section {
+    padding: 8px 12px;
+    border-bottom: 1px solid #161b22;
+}
+
+#osq-token-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#osq-token-label {
+    font-size: 11px;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 44px;
+}
+
+#osq-token-value {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: #16bbd7;
+    letter-spacing: 3px;
+    user-select: all;
+    padding: 2px 8px;
+    background: #161b22;
+    border-radius: 4px;
+    border: 1px solid #21262d;
+    transition: background 0.15s;
+}
+
+#osq-token-value.osq-flash {
+    background: #16bbd7;
+    color: #0d1117;
+}
+
+#osq-token-copy,
+#osq-token-reset {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 14px;
+}
+
+#osq-login-row {
+    margin-top: 6px;
+}
+
+#osq-login-url {
+    font-size: 11px;
+    color: #58a6ff;
+    word-break: break-all;
+    user-select: all;
+}
+
+#osq-user-row {
+    margin-top: 4px;
+}
+
+#osq-user-name {
+    font-size: 13px;
+    color: #3fb950;
+    font-weight: 500;
+}
+
+/* ---- Telemetry grid ---- */
+#osq-telemetry-section {
+    padding: 8px 12px;
+    flex-shrink: 0;
+}
+
+.osq-telem-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.osq-telem-item {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    padding: 3px 6px;
+    background: #161b22;
+    border-radius: 4px;
+    border: 1px solid #21262d;
+}
+
+.osq-telem-label {
+    font-size: 10px;
+    color: #8b949e;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    width: 32px;
+    flex-shrink: 0;
+}
+
+.osq-telem-value {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: #e0e0e0;
+    text-align: right;
+    flex: 1;
+}
+
+.osq-telem-unit {
+    font-size: 10px;
+    color: #484f58;
+    width: 20px;
+}
+
+/* ---- Debug section ---- */
+#osq-debug-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid #21262d;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#osq-debug-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: #161b22;
+    border-bottom: 1px solid #21262d;
+}
+
+#osq-debug-clear {
+    font-size: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+#osq-debug-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 12px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #8b949e;
+    min-height: 0;
+}
+
+.osq-log-line {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+#osq-debug-telemetry {
+    border-top: 1px solid #21262d;
+    padding: 4px 12px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+#osq-debug-raw-label {
+    font-size: 10px;
+    color: #484f58;
+    text-transform: uppercase;
+}
+
+#osq-debug-raw {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 10px;
+    color: #8b949e;
+    margin: 2px 0 0 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ---- Scrollbar styling ---- */
+::-webkit-scrollbar {
+    width: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #484f58;
+}

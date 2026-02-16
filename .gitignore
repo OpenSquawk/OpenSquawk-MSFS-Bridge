@@ -1,4 +1,13 @@
-bin/
-obj/
-.env
-.idea
+# MSFS build output
+*.spb
+Build/
+_Temp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

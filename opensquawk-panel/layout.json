@@ -1,0 +1,24 @@
+{
+  "content": [
+    {
+      "path": "html_ui/InGamePanels/OpenSquawkPanel/OpenSquawkPanel.html",
+      "size": 5117,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/InGamePanels/OpenSquawkPanel/OpenSquawkPanel.js",
+      "size": 20885,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/InGamePanels/OpenSquawkPanel/OpenSquawkPanel.css",
+      "size": 6103,
+      "date": 132441482909180874
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_OPENSQUAWK.svg",
+      "size": 705,
+      "date": 132441482909180874
+    }
+  ]
+}

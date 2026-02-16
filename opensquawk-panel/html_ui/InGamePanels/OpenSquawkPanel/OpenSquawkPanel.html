@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/SCSS/common.css" />
+    <link rel="stylesheet" href="OpenSquawkPanel.css" />
+
+    <script type="text/javascript" src="/JS/coherent.js"></script>
+    <script type="text/javascript" src="/JS/common.js"></script>
+    <script type="text/javascript" src="/JS/dataStorage.js"></script>
+    <script type="text/javascript" src="/JS/buttons.js"></script>
+    <script type="text/javascript" src="/JS/Services/ToolBarPanels.js"></script>
+    <script type="text/javascript" src="/Pages/VCockpit/Instruments/Shared/BaseInstrument.js"></script>
+
+    <link rel="import" href="/templates/ingameUi/ingameUi.html" />
+    <link rel="import" href="/templates/ingameUiHeader/ingameUiHeader.html" />
+
+    <script type="text/javascript" src="/JS/debug.js"></script>
+    <script type="text/javascript" src="OpenSquawkPanel.js"></script>
+</head>
+
+<body class="border-box">
+    <ingamepanel-opensquawk>
+        <ingame-ui id="OpenSquawkPanel" panel-id="PANEL_OPENSQUAWK"
+                   title="OpenSquawk" class="ingameUiFrame panelInvisible"
+                   content-fit="true" min-width="320" min-height="200">
+
+            <!-- Header bar -->
+            <div id="osq-header">
+                <div id="osq-title">
+                    <span id="osq-logo">&#9992;</span>
+                    OpenSquawk
+                </div>
+                <div id="osq-header-right">
+                    <button id="osq-debug-toggle" title="Toggle debug">&#9881;</button>
+                </div>
+            </div>
+
+            <!-- Status badges -->
+            <div id="osq-status-bar">
+                <span class="osq-badge" id="osq-badge-auth">&#9679; Not linked</span>
+                <span class="osq-badge" id="osq-badge-sim">&#9679; Sim</span>
+                <span class="osq-badge" id="osq-badge-flight">&#9679; Flight</span>
+            </div>
+
+            <!-- Auth section -->
+            <div id="osq-auth-section">
+                <div id="osq-token-row">
+                    <span id="osq-token-label">Token</span>
+                    <span id="osq-token-value">------</span>
+                    <button id="osq-token-copy" title="Copy token">&#128203;</button>
+                    <button id="osq-token-reset" title="Generate new token">&#8635;</button>
+                </div>
+                <div id="osq-login-row">
+                    <span id="osq-login-url"></span>
+                </div>
+                <div id="osq-user-row">
+                    <span id="osq-user-name"></span>
+                </div>
+            </div>
+
+            <!-- Telemetry display -->
+            <div id="osq-telemetry-section">
+                <div class="osq-telem-grid">
+                    <div class="osq-telem-item">
+                        <span class="osq-telem-label">IAS</span>
+                        <span class="osq-telem-value" id="osq-t-ias">---</span>
+                        <span class="osq-telem-unit">kt</span>
+                    </div>
+                    <div class="osq-telem-item">
+                        <span class="osq-telem-label">ALT</span>
+                        <span class="osq-telem-value" id="osq-t-alt">---</span>
+                        <span class="osq-telem-unit">ft</span>
+                    </div>
+                    <div class="osq-telem-item">
+                        <span class="osq-telem-label">VS</span>
+                        <span class="osq-telem-value" id="osq-t-vs">---</span>
+                        <span class="osq-telem-unit">fpm</span>
+                    </div>
+                    <div class="osq-telem-item">
+                        <span class="osq-telem-label">GS</span>
+                        <span class="osq-telem-value" id="osq-t-gs">---</span>
+                        <span class="osq-telem-unit">kt</span>
+                    </div>
+                    <div class="osq-telem-item">
+                        <span class="osq-telem-label">HDG</span>
+                        <span class="osq-telem-value" id="osq-t-hdg">---</span>
+                        <span class="osq-telem-unit">&deg;</span>
+                    </div>
+                    <div class="osq-telem-item">
+                        <span class="osq-telem-label">XPDR</span>
+                        <span class="osq-telem-value" id="osq-t-xpdr">----</span>
+                        <span class="osq-telem-unit"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug log (hidden by default) -->
+            <div id="osq-debug-section" class="osq-hidden">
+                <div id="osq-debug-header">
+                    <span>Debug Log</span>
+                    <button id="osq-debug-clear" title="Clear log">&#128465;</button>
+                </div>
+                <div id="osq-debug-log"></div>
+                <div id="osq-debug-telemetry">
+                    <span id="osq-debug-raw-label">Raw telemetry:</span>
+                    <pre id="osq-debug-raw"></pre>
+                </div>
+            </div>
+
+        </ingame-ui>
+    </ingamepanel-opensquawk>
+</body>
+</html>
