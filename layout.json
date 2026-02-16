@@ -3,92 +3,92 @@
     {
       "path": ".gitignore",
       "size": 24,
-      "date": "134157220800628260"
+      "date": "134157249825751330"
     },
     {
       "path": "docs/AIRCRAFT-INTEGRATION.md",
       "size": 858,
-      "date": "134157225140763220"
+      "date": "134157249825769140"
     },
     {
       "path": "docs/DEBUG-RUNBOOK.md",
       "size": 2538,
-      "date": "134157225190245100"
+      "date": "134157249825773780"
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.css",
       "size": 638,
-      "date": "134157224470532220"
+      "date": "134157249825779280"
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.html",
       "size": 9195,
-      "date": "134157224798671070"
+      "date": "134157249825782060"
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.js",
       "size": 3900,
-      "date": "134157224471540110"
+      "date": "134157249825785980"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/bridge_shared.js",
-      "size": 13367,
-      "date": "134157220800652380"
+      "size": 14187,
+      "date": "134157250693959970"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.css",
       "size": 4797,
-      "date": "134157220800644590"
+      "date": "134157249825794420"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.html",
       "size": 7050,
-      "date": "134157225281882340"
+      "date": "134157249825798240"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.js",
-      "size": 71080,
-      "date": "134157223921432620"
+      "size": 71720,
+      "date": "134157250816540180"
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg",
-      "size": 361,
-      "date": "134157224239487230"
+      "size": 580,
+      "date": "134157251093328080"
     },
     {
       "path": "InGamePanels/maximus-ingamepanels-custom.spb",
       "size": 698,
-      "date": "134157224177502980"
+      "date": "134157249825755730"
     },
     {
       "path": "LEGACY-BRIDGE-FUNCTIONALITY.md",
       "size": 8378,
-      "date": "134157220800631820"
+      "date": "134157249825760590"
     },
     {
       "path": "manifest.json",
       "size": 375,
-      "date": "134157225240462400"
+      "date": "134157249825819980"
     },
     {
       "path": "package.json",
       "size": 238,
-      "date": "134157225478876720"
+      "date": "134157249825824000"
     },
     {
       "path": "README.md",
-      "size": 2483,
-      "date": "134157225014728400"
+      "size": 2561,
+      "date": "134157251228162660"
     },
     {
       "path": "tests/bridge_shared.test.js",
-      "size": 3965,
-      "date": "134157220800667870"
+      "size": 4167,
+      "date": "134157251188544580"
     },
     {
       "path": "tools/update-package-metadata.mjs",
       "size": 2319,
-      "date": "134157220800670690"
+      "date": "134157249825830690"
     }
   ]
 }

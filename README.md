@@ -3,7 +3,7 @@
 This package replaces the old external Windows bridge with an in-sim HTML/JS bridge that runs as a global MSFS toolbar panel (not tied to any aircraft panel.cfg).
 
 ## What is implemented
-- Token generation and local persistence (`opensquawk.bridge.token.v1`).
+- Token generation and local persistence (`opensquawk.bridge.token.v1`) with a 4-character non-ambiguous alphabet (`ABCDEFGHJKMNPQRSTUVWXYZ23456789`).
 - Login flow URL generation (`/bridge/connect?token=...`).
 - Login polling against bridge user endpoint.
 - Simulator telemetry sampling from SimVars.

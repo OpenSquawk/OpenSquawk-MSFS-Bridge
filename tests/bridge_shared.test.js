@@ -105,11 +105,13 @@ test("resolveConfig fills endpoint defaults from base URL", () => {
     assert.equal(resolved.remoteDebugEnabled, true);
 });
 
-test("generateToken returns URL-safe token", () => {
+test("generateToken returns a 4-char token from non-ambiguous alphabet", () => {
     const token = shared.generateToken();
-    assert.ok(token.length > 20);
-    assert.ok(/^[A-Za-z0-9_-]+$/.test(token));
-    assert.equal(token.includes("="), false);
-    assert.equal(token.includes("+"), false);
-    assert.equal(token.includes("/"), false);
+    assert.equal(token.length, shared.TOKEN_LENGTH);
+    assert.ok(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}$/.test(token));
+    assert.equal(shared.isTokenValid(token), true);
+    assert.equal(shared.isTokenValid("0OIl"), false);
+    assert.equal(shared.isTokenValid("ABCD"), true);
+    assert.equal(shared.isTokenValid("abc2"), true);
+    assert.equal(shared.normalizeToken(" ab2c "), "AB2C");
 });

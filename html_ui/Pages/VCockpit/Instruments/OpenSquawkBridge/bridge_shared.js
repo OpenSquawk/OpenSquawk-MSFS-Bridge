@@ -53,6 +53,9 @@
         autopilot_master: "autopilotMaster"
     });
 
+    var TOKEN_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    var TOKEN_LENGTH = 4;
+
     function normalizePropertyName(name) {
         return String(name || "")
             .trim()
@@ -361,43 +364,76 @@
         return null;
     }
 
-    function generateToken() {
-        var bytes = new Uint8Array(32);
+    function normalizeToken(value) {
+        if (typeof value !== "string") {
+            return "";
+        }
 
-        if (typeof crypto !== "undefined" && crypto && typeof crypto.getRandomValues === "function") {
-            crypto.getRandomValues(bytes);
-        } else {
-            for (var i = 0; i < bytes.length; i++) {
-                bytes[i] = Math.floor(Math.random() * 256);
+        return value.trim().toUpperCase();
+    }
+
+    function isTokenValid(value) {
+        var token = normalizeToken(value);
+        if (token.length !== TOKEN_LENGTH) {
+            return false;
+        }
+
+        for (var i = 0; i < token.length; i++) {
+            if (TOKEN_ALPHABET.indexOf(token[i]) < 0) {
+                return false;
             }
         }
 
-        var binary = "";
-        for (var j = 0; j < bytes.length; j++) {
-            binary += String.fromCharCode(bytes[j]);
+        return true;
+    }
+
+    function getRandomByte() {
+        if (typeof crypto !== "undefined" && crypto && typeof crypto.getRandomValues === "function") {
+            var bucket = new Uint8Array(1);
+            crypto.getRandomValues(bucket);
+            return bucket[0];
         }
 
-        var base64;
-        if (typeof btoa === "function") {
-            base64 = btoa(binary);
-        } else if (typeof Buffer !== "undefined") {
-            base64 = Buffer.from(binary, "binary").toString("base64");
-        } else {
-            throw new Error("No base64 encoder available to generate token.");
+        return Math.floor(Math.random() * 256);
+    }
+
+    function getRandomIndex(maxExclusive) {
+        if (maxExclusive <= 0) {
+            throw new Error("maxExclusive must be greater than 0");
         }
 
-        return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+        var bucketSize = Math.floor(256 / maxExclusive) * maxExclusive;
+        while (true) {
+            var candidate = getRandomByte();
+            if (candidate < bucketSize) {
+                return candidate % maxExclusive;
+            }
+        }
+    }
+
+    function generateToken() {
+        var chars = [];
+        for (var i = 0; i < TOKEN_LENGTH; i++) {
+            var index = getRandomIndex(TOKEN_ALPHABET.length);
+            chars.push(TOKEN_ALPHABET[index]);
+        }
+
+        return chars.join("");
     }
 
     return {
         COMMAND_CONTAINER_KEYS: COMMAND_CONTAINER_KEYS,
         DEFAULT_CONFIG: DEFAULT_CONFIG,
+        TOKEN_ALPHABET: TOKEN_ALPHABET,
+        TOKEN_LENGTH: TOKEN_LENGTH,
         mapCommandNameToParameter: mapCommandNameToParameter,
         parseCommandPayload: parseCommandPayload,
         buildTelemetryPayload: buildTelemetryPayload,
         extractUserName: extractUserName,
         resolveConfig: resolveConfig,
         isValidCoordinate: isValidCoordinate,
+        normalizeToken: normalizeToken,
+        isTokenValid: isTokenValid,
         generateToken: generateToken,
         toBooleanFromUnknown: toBooleanFromUnknown,
         toIntegerFromUnknown: toIntegerFromUnknown,

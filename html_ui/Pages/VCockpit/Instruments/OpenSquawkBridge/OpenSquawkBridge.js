@@ -1103,14 +1103,27 @@
 
         this.ui.updateConfigInputs(this.config);
 
-        if (!this.token) {
-            this.token = this.shared.generateToken();
-            this.storage.writeString(STORAGE_KEYS.token, this.token);
-            this.logger.info("token.generated", "Generated new bridge token", {
+        var originalToken = this.token;
+        var normalizedToken = this.shared.normalizeToken(this.token);
+
+        if (this.shared.isTokenValid(normalizedToken)) {
+            this.token = normalizedToken;
+            if (this.token !== originalToken) {
+                this.storage.writeString(STORAGE_KEYS.token, this.token);
+            }
+            this.logger.info("token.loaded", "Loaded existing bridge token", {
                 tokenLength: this.token.length
             });
         } else {
-            this.logger.info("token.loaded", "Loaded existing bridge token", {
+            if (originalToken) {
+                this.logger.warn("token.invalid", "Stored token is invalid for current policy; generating a new token", {
+                    previousTokenLength: originalToken.length
+                });
+            }
+
+            this.token = this.shared.generateToken();
+            this.storage.writeString(STORAGE_KEYS.token, this.token);
+            this.logger.info("token.generated", "Generated new bridge token", {
                 tokenLength: this.token.length
             });
         }
@@ -1311,8 +1324,8 @@
 
         this.logger.info("token.regenerated", "Bridge token regenerated", {
             reason: reason,
-            previousTokenPrefix: previousToken ? previousToken.slice(0, 6) : null,
-            newTokenPrefix: this.token.slice(0, 6)
+            previousTokenPrefix: previousToken ? previousToken.slice(0, this.shared.TOKEN_LENGTH) : null,
+            newTokenPrefix: this.token.slice(0, this.shared.TOKEN_LENGTH)
         });
 
         this.ui.updateTokenSection(this.token, this.getLoginUrl());
@@ -1836,7 +1849,7 @@
         var payload = {
             exportedAt: toIsoDate(Date.now()),
             reason: reason,
-            tokenPrefix: this.token ? this.token.slice(0, 6) : null,
+            tokenPrefix: this.token ? this.token.slice(0, this.shared.TOKEN_LENGTH) : null,
             state: {
                 userConnected: this.userConnected,
                 userName: this.userName,
