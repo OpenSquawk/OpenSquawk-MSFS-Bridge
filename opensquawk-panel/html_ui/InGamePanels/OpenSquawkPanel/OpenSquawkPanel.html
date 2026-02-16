@@ -23,7 +23,7 @@
     <ingamepanel-opensquawk>
         <ingame-ui id="OpenSquawkPanel" panel-id="PANEL_OPENSQUAWK"
                    title="OpenSquawk" class="ingameUiFrame panelInvisible"
-                   content-fit="true" min-width="320" min-height="200">
+                   content-fit="true" min-width="340" min-height="220">
 
             <!-- Header bar -->
             <div id="osq-header">
@@ -32,7 +32,8 @@
                     OpenSquawk
                 </div>
                 <div id="osq-header-right">
-                    <button id="osq-debug-toggle" title="Toggle debug">&#9881;</button>
+                    <button id="osq-settings-toggle" title="Settings">&#9881;</button>
+                    <button id="osq-debug-toggle" title="Toggle debug log">&#9998;</button>
                 </div>
             </div>
 
@@ -41,6 +42,30 @@
                 <span class="osq-badge" id="osq-badge-auth">&#9679; Not linked</span>
                 <span class="osq-badge" id="osq-badge-sim">&#9679; Sim</span>
                 <span class="osq-badge" id="osq-badge-flight">&#9679; Flight</span>
+            </div>
+
+            <!-- Settings panel (hidden by default) -->
+            <div id="osq-settings-section" class="osq-hidden">
+                <div class="osq-settings-row">
+                    <label for="osq-set-url">Server URL</label>
+                    <input id="osq-set-url" type="text" spellcheck="false" />
+                </div>
+                <div class="osq-settings-row">
+                    <label for="osq-set-telem-interval">Telemetry interval (s)</label>
+                    <input id="osq-set-telem-interval" type="number" min="5" max="300" step="1" />
+                </div>
+                <div class="osq-settings-row">
+                    <label for="osq-set-heartbeat-interval">Heartbeat interval (s)</label>
+                    <input id="osq-set-heartbeat-interval" type="number" min="10" max="600" step="1" />
+                </div>
+                <div class="osq-settings-row">
+                    <label for="osq-set-auth-interval">Auth poll interval (s)</label>
+                    <input id="osq-set-auth-interval" type="number" min="3" max="120" step="1" />
+                </div>
+                <div class="osq-settings-actions">
+                    <button id="osq-settings-save">Save</button>
+                    <button id="osq-settings-defaults">Defaults</button>
+                </div>
             </div>
 
             <!-- Auth section -->
@@ -99,7 +124,10 @@
             <div id="osq-debug-section" class="osq-hidden">
                 <div id="osq-debug-header">
                     <span>Debug Log</span>
-                    <button id="osq-debug-clear" title="Clear log">&#128465;</button>
+                    <div id="osq-debug-actions">
+                        <button id="osq-debug-copy-all" title="Copy all logs">&#128203;</button>
+                        <button id="osq-debug-clear" title="Clear log">&#128465;</button>
+                    </div>
                 </div>
                 <div id="osq-debug-log"></div>
                 <div id="osq-debug-telemetry">
