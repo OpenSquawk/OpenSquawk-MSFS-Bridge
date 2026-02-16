@@ -1,0 +1,69 @@
+{
+  "content": [
+    {
+      "path": ".gitignore",
+      "size": 24,
+      "date": "134157196569934720"
+    },
+    {
+      "path": "docs/AIRCRAFT-INTEGRATION.md",
+      "size": 811,
+      "date": "134157201015683420"
+    },
+    {
+      "path": "docs/DEBUG-RUNBOOK.md",
+      "size": 2488,
+      "date": "134157201015809360"
+    },
+    {
+      "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/bridge_shared.js",
+      "size": 13367,
+      "date": "134157197141986820"
+    },
+    {
+      "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.css",
+      "size": 4797,
+      "date": "134157198023514100"
+    },
+    {
+      "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.html",
+      "size": 7050,
+      "date": "134157198022733390"
+    },
+    {
+      "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.js",
+      "size": 70613,
+      "date": "134157202052865630"
+    },
+    {
+      "path": "LEGACY-BRIDGE-FUNCTIONALITY.md",
+      "size": 8378,
+      "date": "134157191975954140"
+    },
+    {
+      "path": "manifest.json",
+      "size": 375,
+      "date": "134157201495109100"
+    },
+    {
+      "path": "package.json",
+      "size": 238,
+      "date": "134157196569934510"
+    },
+    {
+      "path": "README.md",
+      "size": 2060,
+      "date": "134157201015646450"
+    },
+    {
+      "path": "tests/bridge_shared.test.js",
+      "size": 3965,
+      "date": "134157201209139580"
+    },
+    {
+      "path": "tools/update-package-metadata.mjs",
+      "size": 2319,
+      "date": "134157201396940720"
+    }
+  ]
+}

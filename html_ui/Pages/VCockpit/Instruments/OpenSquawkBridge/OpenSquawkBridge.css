@@ -1,0 +1,252 @@
+:root {
+    --osb-bg: #0f1420;
+    --osb-panel: #1b2233;
+    --osb-border: #304264;
+    --osb-text: #f5f7ff;
+    --osb-muted: #98abc7;
+    --osb-good: #35d08a;
+    --osb-warn: #ffcb57;
+    --osb-bad: #ff6874;
+    --osb-accent: #57c8ff;
+}
+
+#osb-root {
+    font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+    color: var(--osb-text);
+    background: radial-gradient(circle at 10% 10%, #1d2942 0%, var(--osb-bg) 45%);
+    border: 1px solid var(--osb-border);
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 18px;
+}
+
+#osb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.osb-title-wrap h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.osb-subtitle {
+    margin: 4px 0 0;
+    color: var(--osb-muted);
+    font-size: 13px;
+}
+
+#osb-runtime-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--osb-muted);
+}
+
+#osb-state-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.osb-state-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--osb-border);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.osb-label {
+    color: var(--osb-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.osb-badge {
+    display: inline-flex;
+    width: fit-content;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12px;
+    border: 1px solid transparent;
+}
+
+.osb-badge-on {
+    color: #02150a;
+    background: var(--osb-good);
+    border-color: #1fa86b;
+}
+
+.osb-badge-warn {
+    color: #1c1200;
+    background: var(--osb-warn);
+    border-color: #d8a621;
+}
+
+.osb-badge-off {
+    color: #33040a;
+    background: var(--osb-bad);
+    border-color: #ca4050;
+}
+
+.osb-detail {
+    font-size: 12px;
+    color: var(--osb-muted);
+}
+
+.osb-panel {
+    margin-bottom: 14px;
+    border: 1px solid var(--osb-border);
+    border-radius: 8px;
+    background: var(--osb-panel);
+    padding: 12px;
+}
+
+.osb-panel h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    letter-spacing: 0.03em;
+}
+
+.osb-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.osb-form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--osb-muted);
+}
+
+.osb-form-grid input[type="text"],
+.osb-form-grid input[type="password"],
+.osb-form-grid input[type="number"] {
+    font-family: "Consolas", "Courier New", monospace;
+    background: #0f1628;
+    color: var(--osb-text);
+    border: 1px solid var(--osb-border);
+    border-radius: 6px;
+    padding: 7px;
+}
+
+.osb-form-grid input:focus {
+    outline: 1px solid var(--osb-accent);
+    outline-offset: 1px;
+}
+
+.osb-checkbox {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 7px !important;
+    color: var(--osb-text) !important;
+}
+
+.osb-button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.osb-button-row button {
+    border: 1px solid var(--osb-border);
+    color: var(--osb-text);
+    background: linear-gradient(180deg, #304a78, #24395d);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.osb-button-row button:hover {
+    background: linear-gradient(180deg, #3a5b93, #2b4572);
+}
+
+#osb-counters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.osb-counter {
+    border: 1px solid var(--osb-border);
+    border-radius: 6px;
+    background: rgba(12, 22, 41, 0.6);
+    padding: 6px;
+}
+
+.osb-counter-name {
+    color: var(--osb-muted);
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.osb-counter-value {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+#osb-log-console {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 12px;
+    border: 1px solid var(--osb-border);
+    border-radius: 6px;
+    background: #0c1222;
+    color: #c8f3ff;
+    padding: 8px;
+    max-height: 280px;
+    overflow: auto;
+    white-space: pre-wrap;
+}
+
+.osb-log-entry {
+    border-bottom: 1px solid rgba(111, 145, 200, 0.2);
+    padding: 3px 0;
+}
+
+.osb-log-entry:last-child {
+    border-bottom: none;
+}
+
+.osb-log-level-debug {
+    color: #96d8ff;
+}
+
+.osb-log-level-info {
+    color: #bfe8bf;
+}
+
+.osb-log-level-warn {
+    color: #ffe59f;
+}
+
+.osb-log-level-error {
+    color: #ff9ca5;
+}
+
+@media (max-width: 1200px) {
+    #osb-state-grid,
+    #osb-counters,
+    .osb-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
