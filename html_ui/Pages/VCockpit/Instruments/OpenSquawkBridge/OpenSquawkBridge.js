@@ -178,6 +178,36 @@
         });
     }
 
+    function classifyHttpError(error) {
+        var name = error && error.name ? String(error.name) : "";
+        var message = String(error && error.message ? error.message : error || "");
+        var normalized = message.toLowerCase();
+
+        var isLikelyFetchTypeError = name.toLowerCase() === "typeerror"
+            || normalized.indexOf("failed to fetch") >= 0
+            || normalized.indexOf("networkerror") >= 0
+            || normalized.indexOf("load failed") >= 0;
+
+        if (isLikelyFetchTypeError) {
+            return {
+                category: "network_or_cors",
+                hint: "Likely blocked by CORS/preflight, TLS trust, DNS, or network reachability. For OpenSquawk API calls, ensure Access-Control-Allow-Origin and Access-Control-Allow-Headers include x-bridge-token, content-type, authorization."
+            };
+        }
+
+        if (normalized.indexOf("timeout") >= 0 || normalized.indexOf("aborted") >= 0) {
+            return {
+                category: "timeout",
+                hint: "Request timed out before completion. Check endpoint latency and timeout settings."
+            };
+        }
+
+        return {
+            category: "unknown",
+            hint: null
+        };
+    }
+
     function RuntimeLogger(maxEntries, echoToConsole) {
         this.maxEntries = maxEntries;
         this.echoToConsole = !!echoToConsole;
@@ -459,12 +489,16 @@
         return guardedPromise
             .catch(function (error) {
                 var durationMs = Date.now() - startMs;
+                var diagnostic = classifyHttpError(error);
                 self.logger.error("http.request.failed", "HTTP request failed", {
                     requestId: requestId,
                     method: method,
                     url: url,
                     durationMs: durationMs,
-                    error: String(error && error.message ? error.message : error)
+                    errorName: error && error.name ? String(error.name) : null,
+                    error: String(error && error.message ? error.message : error),
+                    diagnosticCategory: diagnostic.category,
+                    diagnosticHint: diagnostic.hint
                 });
                 throw error;
             })
@@ -1361,7 +1395,6 @@
             response = await this.http.request({
                 method: "GET",
                 url: this.config.meUrl,
-                query: { token: this.token },
                 headers: this.buildHeaders(false),
                 timeoutMs: this.config.requestTimeoutMs
             });
@@ -1746,7 +1779,7 @@
         }
 
         if (this.token) {
-            headers["X-Bridge-Token"] = this.token;
+            headers["x-bridge-token"] = this.token;
         }
 
         if (this.config.authToken) {

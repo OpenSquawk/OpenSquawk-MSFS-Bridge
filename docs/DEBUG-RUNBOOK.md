@@ -16,6 +16,7 @@ If `runtime.boot` exists but telemetry never appears, SimVar API is likely unava
 ## 2. Login problems
 Symptoms:
 - User stays `disconnected`.
+- Log shows `TypeError` on `/api/bridge/me`.
 
 Look for:
 - `http.request.start` with `url=<me endpoint>`
@@ -26,6 +27,10 @@ Checks:
 - Confirm endpoint values in UI.
 - Confirm token in query string is the same as shown in token field.
 - Confirm backend accepts your optional bearer token if configured.
+- If logs show `diagnosticCategory=network_or_cors`, verify CORS/preflight on backend:
+  - `Access-Control-Allow-Origin`
+  - `Access-Control-Allow-Headers` must include `x-bridge-token, content-type, authorization`
+  - `OPTIONS` should return success for bridge endpoints.
 
 ## 3. Telemetry not sending
 Symptoms:

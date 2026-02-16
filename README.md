@@ -9,6 +9,7 @@ This package replaces the old external Windows bridge with an in-sim HTML/JS bri
 - Simulator telemetry sampling from SimVars.
 - Active telemetry upload and idle status heartbeats.
 - Command parsing from telemetry response and write-back to simulator.
+- Bridge API requests use the `x-bridge-token` header (aligned with server endpoints).
 - Deep tracing and diagnostics (structured logs, counters, runtime state panel).
 
 ## Package layout
