@@ -52,8 +52,8 @@
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg",
-      "size": 580,
-      "date": "134157251093328080"
+      "size": 783,
+      "date": "134157270547569840"
     },
     {
       "path": "InGamePanels/maximus-ingamepanels-custom.spb",
@@ -68,7 +68,7 @@
     {
       "path": "manifest.json",
       "size": 375,
-      "date": "134157252553211230"
+      "date": "134157269363160060"
     },
     {
       "path": "package.json",
