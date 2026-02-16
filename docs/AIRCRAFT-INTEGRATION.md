@@ -13,6 +13,7 @@ The current implementation is a global MSFS toolbar panel. You do not need to ed
   - `html_ui/InGamePanels/CustomPanel/CustomPanel.html`
   - `html_ui/InGamePanels/CustomPanel/CustomPanel.js`
   - `html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg`
+  - `html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.png`
 - Rebuild `layout.json` after any file changes (`npm run update:layout`).
 - Restart MSFS after replacing the package.
 

@@ -7,13 +7,13 @@
     },
     {
       "path": "docs/AIRCRAFT-INTEGRATION.md",
-      "size": 858,
-      "date": "134157249825769140"
+      "size": 932,
+      "date": "134157289941492000"
     },
     {
       "path": "docs/DEBUG-RUNBOOK.md",
-      "size": 2856,
-      "date": "134157269218840820"
+      "size": 3344,
+      "date": "134157289475456960"
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.css",
@@ -27,8 +27,8 @@
     },
     {
       "path": "html_ui/InGamePanels/CustomPanel/CustomPanel.js",
-      "size": 3900,
-      "date": "134157249825785980"
+      "size": 4163,
+      "date": "134157289150918400"
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/bridge_shared.js",
@@ -47,13 +47,38 @@
     },
     {
       "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.js",
-      "size": 73152,
-      "date": "134157269087122510"
+      "size": 87941,
+      "date": "134157289064663380"
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_CUSTOM_PANEL.png",
+      "size": 2811,
+      "date": "134157289373799180"
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_CUSTOM_PANEL.svg",
+      "size": 805,
+      "date": "134157289368155170"
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.png",
+      "size": 2811,
+      "date": "134157289373737010"
     },
     {
       "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_MAXIMUS_CUSTOM_PANEL.svg",
-      "size": 783,
-      "date": "134157270547569840"
+      "size": 805,
+      "date": "134157289368083660"
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_PANEL_CUSTOM_PANEL.png",
+      "size": 2811,
+      "date": "134157289373771250"
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_PANEL_CUSTOM_PANEL.svg",
+      "size": 805,
+      "date": "134157289368124500"
     },
     {
       "path": "InGamePanels/maximus-ingamepanels-custom.spb",
@@ -68,7 +93,7 @@
     {
       "path": "manifest.json",
       "size": 375,
-      "date": "134157269363160060"
+      "date": "134157289590175570"
     },
     {
       "path": "package.json",

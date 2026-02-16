@@ -172,6 +172,26 @@
         }
     }
 
+    function serializeError(error) {
+        if (!error) {
+            return {
+                name: null,
+                message: null,
+                stack: null
+            };
+        }
+
+        var name = error.name ? String(error.name) : null;
+        var message = error.message ? String(error.message) : String(error);
+        var stack = error.stack ? String(error.stack) : null;
+
+        return {
+            name: name,
+            message: message,
+            stack: stack
+        };
+    }
+
     function delay(ms) {
         return new Promise(function (resolve) {
             setTimeout(resolve, ms);
@@ -179,8 +199,9 @@
     }
 
     function classifyHttpError(error) {
-        var name = error && error.name ? String(error.name) : "";
-        var message = String(error && error.message ? error.message : error || "");
+        var serialized = serializeError(error);
+        var name = serialized.name ? serialized.name : "";
+        var message = serialized.message ? serialized.message : "";
         var normalized = message.toLowerCase();
 
         var isLikelyFetchTypeError = name.toLowerCase() === "typeerror"
@@ -192,6 +213,20 @@
             return {
                 category: "network_or_cors",
                 hint: "Likely blocked by CORS/preflight, TLS trust, DNS, or network reachability. For OpenSquawk API calls, ensure Access-Control-Allow-Origin and Access-Control-Allow-Headers include x-bridge-token, content-type, authorization."
+            };
+        }
+
+        if (normalized.indexOf("invalid url") >= 0 || normalized.indexOf("malformed") >= 0) {
+            return {
+                category: "invalid_url",
+                hint: "Request URL appears invalid. Verify base URL and endpoint fields in panel configuration."
+            };
+        }
+
+        if (normalized.indexOf("certificate") >= 0 || normalized.indexOf("ssl") >= 0 || normalized.indexOf("tls") >= 0) {
+            return {
+                category: "tls_or_certificate",
+                hint: "TLS/certificate validation may be failing in the simulator webview. Verify certificate chain and hostname."
             };
         }
 
@@ -396,33 +431,94 @@
         return base + (base.indexOf("?") >= 0 ? "&" : "?") + parts.join("&");
     };
 
+    HttpClient.prototype.resolveTransport = function (requestedTransport) {
+        if (requestedTransport === "fetch" || requestedTransport === "xhr") {
+            return requestedTransport;
+        }
+
+        if (typeof Coherent !== "undefined" && Coherent) {
+            return "xhr";
+        }
+
+        return "fetch";
+    };
+
+    HttpClient.prototype.normalizeHeaders = function (rawHeaders) {
+        var normalized = {};
+        var source = rawHeaders && typeof rawHeaders === "object" ? rawHeaders : {};
+        var headerNames = Object.keys(source);
+
+        for (var i = 0; i < headerNames.length; i++) {
+            var key = headerNames[i];
+            var value = source[key];
+
+            if (value === undefined || value === null) {
+                continue;
+            }
+
+            normalized[String(key)] = String(value);
+        }
+
+        return normalized;
+    };
+
     HttpClient.prototype.request = function (options) {
+        options = options || {};
         var self = this;
         var requestId = "req-" + (++this.requestSeq) + "-" + Date.now();
         var method = options.method || "GET";
         var url = this.buildUrl(options.url, options.query);
         var timeoutMs = ensureFiniteNumber(options.timeoutMs, 10000);
         var body = options.body;
-        var headers = options.headers || {};
-        var startMs = Date.now();
+        var headers = this.normalizeHeaders(options.headers || {});
+        var transport = this.resolveTransport(options.transport || "auto");
+        var allowXhrFallback = options.allowXhrFallback !== false && transport !== "xhr";
+        var fetchStartMs = Date.now();
+        var baseContext = {
+            requestId: requestId,
+            method: method,
+            url: url,
+            headers: headers,
+            body: body,
+            timeoutMs: timeoutMs,
+            startedMs: fetchStartMs
+        };
 
         this.logger.debug("http.request.start", "HTTP request started", {
             requestId: requestId,
             method: method,
             url: url,
-            timeoutMs: timeoutMs
+            timeoutMs: timeoutMs,
+            transport: transport,
+            allowXhrFallback: allowXhrFallback,
+            hasBody: !!body,
+            headerNames: Object.keys(headers)
         });
 
-        if (typeof fetch !== "function") {
-            return this.requestViaXhr({
+        if (!url || typeof url !== "string") {
+            var emptyUrlError = new Error("HTTP request URL is empty");
+            this.logger.error("http.request.invalid_url", "HTTP request skipped because URL is empty", {
                 requestId: requestId,
                 method: method,
-                url: url,
-                headers: headers,
-                body: body,
-                timeoutMs: timeoutMs,
-                startedMs: startMs
+                originalUrl: options.url || null
             });
+            return Promise.reject(emptyUrlError);
+        }
+
+        if (url.indexOf("http://") !== 0 && url.indexOf("https://") !== 0) {
+            this.logger.warn("http.request.url_scheme", "URL is not absolute http(s), request may fail in MSFS webview", {
+                requestId: requestId,
+                method: method,
+                url: url
+            });
+        }
+
+        if (transport === "xhr") {
+            return this.requestViaXhr(baseContext);
+        }
+
+        if (typeof fetch !== "function") {
+            return this.requestViaXhr(baseContext);
         }
 
         var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -451,7 +547,7 @@
         var requestPromise = fetch(url, fetchOptions)
             .then(function (response) {
                 return response.text().then(function (text) {
-                    var durationMs = Date.now() - startMs;
+                    var durationMs = Date.now() - fetchStartMs;
                     var parsedJson = null;
 
                     if (text && text.trim()) {
@@ -488,7 +584,7 @@
 
         return guardedPromise
             .catch(function (error) {
-                var durationMs = Date.now() - startMs;
+                var durationMs = Date.now() - fetchStartMs;
                 var diagnostic = classifyHttpError(error);
                 self.logger.error("http.request.failed", "HTTP request failed", {
                     requestId: requestId,
@@ -497,9 +593,53 @@
                     durationMs: durationMs,
                     errorName: error && error.name ? String(error.name) : null,
                     error: String(error && error.message ? error.message : error),
+                    errorDetail: serializeError(error),
                     diagnosticCategory: diagnostic.category,
                     diagnosticHint: diagnostic.hint
                 });
+
+                if (allowXhrFallback && diagnostic.category === "network_or_cors") {
+                    self.logger.warn("http.request.retry_xhr", "Retrying HTTP request using XHR fallback after fetch failure", {
+                        requestId: requestId,
+                        method: method,
+                        url: url
+                    });
+
+                    var fallbackContext = {
+                        requestId: requestId + "-xhr",
+                        method: method,
+                        url: url,
+                        headers: headers,
+                        body: body,
+                        timeoutMs: timeoutMs,
+                        startedMs: Date.now()
+                    };
+
+                    return self.requestViaXhr(fallbackContext)
+                        .then(function (result) {
+                            self.logger.info("http.request.retry_xhr.success", "XHR fallback succeeded", {
+                                requestId: fallbackContext.requestId,
+                                status: result.status,
+                                durationMs: result.durationMs
+                            });
+                            return result;
+                        })
+                        .catch(function (xhrError) {
+                            var xhrDiagnostic = classifyHttpError(xhrError);
+                            self.logger.error("http.request.retry_xhr.failed", "XHR fallback failed", {
+                                requestId: fallbackContext.requestId,
+                                method: method,
+                                url: url,
+                                errorName: xhrError && xhrError.name ? String(xhrError.name) : null,
+                                error: String(xhrError && xhrError.message ? xhrError.message : xhrError),
+                                errorDetail: serializeError(xhrError),
+                                diagnosticCategory: xhrDiagnostic.category,
+                                diagnosticHint: xhrDiagnostic.hint
+                            });
+                            throw xhrError;
+                        });
+                }
+
                 throw error;
             })
             .finally(function () {
@@ -514,12 +654,41 @@
 
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
-            xhr.open(context.method, context.url, true);
-            xhr.timeout = context.timeoutMs;
+            try {
+                xhr.open(context.method, context.url, true);
+            } catch (openError) {
+                self.logger.error("http.request.invalid_xhr_open", "XHR open() failed", {
+                    requestId: context.requestId,
+                    method: context.method,
+                    url: context.url,
+                    error: String(openError && openError.message ? openError.message : openError),
+                    errorDetail: serializeError(openError)
+                });
+                reject(openError);
+                return;
+            }
 
-            var headerNames = Object.keys(context.headers);
+            xhr.timeout = context.timeoutMs;
+            xhr.responseType = "text";
+
+            var headers = self.normalizeHeaders(context.headers);
+            var headerNames = Object.keys(headers);
             for (var i = 0; i < headerNames.length; i++) {
-                xhr.setRequestHeader(headerNames[i], context.headers[headerNames[i]]);
+                var headerName = headerNames[i];
+                try {
+                    xhr.setRequestHeader(headerName, headers[headerName]);
+                } catch (headerError) {
+                    self.logger.error("http.request.invalid_header", "XHR setRequestHeader failed", {
+                        requestId: context.requestId,
+                        method: context.method,
+                        url: context.url,
+                        header: headerName,
+                        error: String(headerError && headerError.message ? headerError.message : headerError),
+                        errorDetail: serializeError(headerError)
+                    });
+                    reject(headerError);
+                    return;
+                }
             }
 
             xhr.onload = function () {
@@ -565,6 +734,8 @@
                     method: context.method,
                     url: context.url,
                     durationMs: durationMs,
+                    status: xhr.status,
+                    readyState: xhr.readyState,
                     error: "network error"
                 });
                 reject(new Error("XMLHttpRequest network error"));
@@ -582,7 +753,29 @@
                 reject(new Error("XMLHttpRequest timeout"));
             };
 
-            xhr.send(context.body || null);
+            xhr.onabort = function () {
+                var durationMs = Date.now() - context.startedMs;
+                self.logger.error("http.request.failed", "HTTP request aborted (XHR)", {
+                    requestId: context.requestId,
+                    method: context.method,
+                    url: context.url,
+                    durationMs: durationMs
+                });
+                reject(new Error("XMLHttpRequest aborted"));
+            };
+
+            try {
+                xhr.send(context.body || null);
+            } catch (sendError) {
+                self.logger.error("http.request.invalid_send", "XHR send() threw an exception", {
+                    requestId: context.requestId,
+                    method: context.method,
+                    url: context.url,
+                    error: String(sendError && sendError.message ? sendError.message : sendError),
+                    errorDetail: serializeError(sendError)
+                });
+                reject(sendError);
+            }
         });
     };
 
@@ -1122,9 +1315,12 @@
         this.nextActiveTickMs = this.startMs;
         this.nextIdleHeartbeatMs = this.startMs;
         this.nextRemoteDebugMs = this.startMs + 20000;
+        this.nextConnectivityProbeMs = 0;
+        this.globalErrorHooks = null;
 
         this.logger.onEntry = this.onLogEntry.bind(this);
         this.ui.bind(this);
+        this.installGlobalErrorHooks();
 
         this.initialize();
     }
@@ -1132,6 +1328,7 @@
     OpenSquawkBridgeRuntime.prototype.initialize = function () {
         this.logger.info("runtime.boot", "OpenSquawk Bridge instrument boot", {
             simVarApiAvailable: this.sim.hasApi(),
+            environment: this.describeEnvironment(),
             config: this.config
         });
 
@@ -1174,7 +1371,65 @@
     };
 
     OpenSquawkBridgeRuntime.prototype.dispose = function () {
+        this.removeGlobalErrorHooks();
         this.logger.info("runtime.dispose", "Runtime disposed");
+    };
+
+    OpenSquawkBridgeRuntime.prototype.describeEnvironment = function () {
+        return {
+            hasWindow: typeof window !== "undefined",
+            hasFetch: typeof fetch === "function",
+            hasXmlHttpRequest: typeof XMLHttpRequest !== "undefined",
+            hasCoherent: typeof Coherent !== "undefined" && !!Coherent,
+            hasAbortController: typeof AbortController !== "undefined",
+            userAgent: typeof navigator !== "undefined" && navigator.userAgent ? navigator.userAgent : null
+        };
+    };
+
+    OpenSquawkBridgeRuntime.prototype.installGlobalErrorHooks = function () {
+        if (this.globalErrorHooks) {
+            return;
+        }
+
+        if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
+            return;
+        }
+
+        var self = this;
+        this.globalErrorHooks = {
+            onError: function (event) {
+                self.logger.error("runtime.unhandled_error", "Unhandled window error captured", {
+                    message: event && event.message ? String(event.message) : null,
+                    source: event && event.filename ? String(event.filename) : null,
+                    line: event && Number.isFinite(event.lineno) ? event.lineno : null,
+                    column: event && Number.isFinite(event.colno) ? event.colno : null,
+                    error: serializeError(event ? event.error : null)
+                });
+            },
+            onUnhandledRejection: function (event) {
+                self.logger.error("runtime.unhandled_rejection", "Unhandled promise rejection captured", {
+                    reason: serializeError(event ? event.reason : null)
+                });
+            }
+        };
+
+        window.addEventListener("error", this.globalErrorHooks.onError);
+        window.addEventListener("unhandledrejection", this.globalErrorHooks.onUnhandledRejection);
+
+        this.logger.info("runtime.error_hooks.installed", "Installed global runtime error hooks");
+    };
+
+    OpenSquawkBridgeRuntime.prototype.removeGlobalErrorHooks = function () {
+        if (!this.globalErrorHooks) {
+            return;
+        }
+
+        if (typeof window !== "undefined" && typeof window.removeEventListener === "function") {
+            window.removeEventListener("error", this.globalErrorHooks.onError);
+            window.removeEventListener("unhandledrejection", this.globalErrorHooks.onUnhandledRejection);
+        }
+
+        this.globalErrorHooks = null;
     };
 
     OpenSquawkBridgeRuntime.prototype.onLogEntry = function (entry) {
@@ -1395,16 +1650,23 @@
             response = await this.http.request({
                 method: "GET",
                 url: this.config.meUrl,
-                headers: this.buildHeaders(false),
+                headers: this.buildHeaders({ isJsonBody: false, includeBridgeToken: true, includeAuth: false }),
                 timeoutMs: this.config.requestTimeoutMs
             });
         } catch (error) {
             this.counters.login_poll_failures++;
             this.setNetworkStatus("error", "login error", "network failure");
+            var loginDiagnostic = classifyHttpError(error);
             this.logger.error("login.poll.failed", "Login poll request failed", {
                 reason: reason,
-                error: String(error && error.message ? error.message : error)
+                error: String(error && error.message ? error.message : error),
+                errorDetail: serializeError(error),
+                diagnosticCategory: loginDiagnostic.category,
+                diagnosticHint: loginDiagnostic.hint,
+                endpoint: this.config.meUrl,
+                tokenLength: this.token ? this.token.length : 0
             });
+            await this.runConnectivityProbe("login.poll.failed", this.config.meUrl);
             return;
         }
 
@@ -1566,16 +1828,23 @@
                 method: "POST",
                 url: this.config.statusUrl,
                 body: JSON.stringify(payload),
-                headers: this.buildHeaders(true),
+                headers: this.buildHeaders({ isJsonBody: true, includeBridgeToken: true, includeAuth: false }),
                 timeoutMs: this.config.requestTimeoutMs
             });
         } catch (error) {
             this.counters.status_post_failures++;
             this.setNetworkStatus("error", "status error", "network failure");
+            var statusDiagnostic = classifyHttpError(error);
             this.logger.error("status.post.failed", "Status heartbeat request failed", {
                 reason: reason,
-                error: String(error && error.message ? error.message : error)
+                error: String(error && error.message ? error.message : error),
+                errorDetail: serializeError(error),
+                diagnosticCategory: statusDiagnostic.category,
+                diagnosticHint: statusDiagnostic.hint,
+                endpoint: this.config.statusUrl,
+                tokenLength: this.token ? this.token.length : 0
             });
+            await this.runConnectivityProbe("status.post.failed", this.config.statusUrl);
             return;
         }
 
@@ -1676,16 +1945,23 @@
                 method: "POST",
                 url: this.config.telemetryUrl,
                 body: JSON.stringify(payload),
-                headers: this.buildHeaders(true),
+                headers: this.buildHeaders({ isJsonBody: true, includeBridgeToken: true, includeAuth: false }),
                 timeoutMs: this.config.requestTimeoutMs
             });
         } catch (error) {
             this.counters.telemetry_post_failures++;
             this.setNetworkStatus("error", "telemetry error", "network failure");
+            var telemetryDiagnostic = classifyHttpError(error);
             this.logger.error("telemetry.post.failed", "Telemetry request failed", {
                 reason: reason,
-                error: String(error && error.message ? error.message : error)
+                error: String(error && error.message ? error.message : error),
+                errorDetail: serializeError(error),
+                diagnosticCategory: telemetryDiagnostic.category,
+                diagnosticHint: telemetryDiagnostic.hint,
+                endpoint: this.config.telemetryUrl,
+                tokenLength: this.token ? this.token.length : 0
             });
+            await this.runConnectivityProbe("telemetry.post.failed", this.config.telemetryUrl);
             return;
         }
 
@@ -1771,22 +2047,83 @@
         this.refreshUi();
     };
 
-    OpenSquawkBridgeRuntime.prototype.buildHeaders = function (isJsonBody) {
+    OpenSquawkBridgeRuntime.prototype.buildHeaders = function (options) {
+        options = options || {};
         var headers = {};
 
-        if (isJsonBody) {
+        if (options.isJsonBody) {
             headers["Content-Type"] = "application/json";
         }
 
-        if (this.token) {
+        if (options.includeBridgeToken !== false && this.token) {
             headers["x-bridge-token"] = this.token;
         }
 
-        if (this.config.authToken) {
+        if (options.includeAuth && this.config.authToken) {
             headers.Authorization = "Bearer " + this.config.authToken;
         }
 
         return headers;
+    };
+
+    OpenSquawkBridgeRuntime.prototype.runConnectivityProbe = async function (reason, url) {
+        if (!url) {
+            return;
+        }
+
+        var now = Date.now();
+        if (now < this.nextConnectivityProbeMs) {
+            return;
+        }
+
+        this.nextConnectivityProbeMs = now + 30000;
+        this.logger.warn("network.probe.start", "Running connectivity probe without custom headers", {
+            reason: reason,
+            url: url,
+            throttleMs: 30000
+        });
+
+        var probes = [
+            { transport: "xhr", enabled: typeof XMLHttpRequest !== "undefined" },
+            { transport: "fetch", enabled: typeof fetch === "function" }
+        ];
+
+        for (var i = 0; i < probes.length; i++) {
+            var probe = probes[i];
+            if (!probe.enabled) {
+                continue;
+            }
+
+            try {
+                var response = await this.http.request({
+                    method: "GET",
+                    url: url,
+                    headers: {},
+                    timeoutMs: this.config.requestTimeoutMs,
+                    allowXhrFallback: false,
+                    transport: probe.transport
+                });
+
+                this.logger.warn("network.probe.result", "Connectivity probe returned a response", {
+                    reason: reason,
+                    transport: probe.transport,
+                    status: response.status,
+                    ok: response.ok,
+                    interpretation: "Endpoint is reachable via this transport. Remaining failures likely involve x-bridge-token handling, auth logic, or endpoint semantics."
+                });
+            } catch (probeError) {
+                var probeDiagnostic = classifyHttpError(probeError);
+                this.logger.error("network.probe.failed", "Connectivity probe failed", {
+                    reason: reason,
+                    transport: probe.transport,
+                    error: String(probeError && probeError.message ? probeError.message : probeError),
+                    errorDetail: serializeError(probeError),
+                    diagnosticCategory: probeDiagnostic.category,
+                    diagnosticHint: probeDiagnostic.hint,
+                    interpretation: "Endpoint may be unreachable from this MSFS webview transport (DNS/TLS/network/policy)."
+                });
+            }
+        }
     };
 
     OpenSquawkBridgeRuntime.prototype.pushDebugSnapshot = function (reason) {
@@ -1848,14 +2185,16 @@
                 method: "POST",
                 url: this.config.remoteDebugUrl,
                 body: JSON.stringify(payload),
-                headers: this.buildHeaders(true),
+                headers: this.buildHeaders({ isJsonBody: true, includeBridgeToken: true, includeAuth: true }),
                 timeoutMs: this.config.requestTimeoutMs
             });
         } catch (error) {
             this.counters.debug_push_failures++;
             this.logger.error("debug.push.failed", "Debug snapshot push failed", {
                 reason: reason,
-                error: String(error && error.message ? error.message : error)
+                error: String(error && error.message ? error.message : error),
+                errorDetail: serializeError(error),
+                endpoint: this.config.remoteDebugUrl
             });
             return;
         }

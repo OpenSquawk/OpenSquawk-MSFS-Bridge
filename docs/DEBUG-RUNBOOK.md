@@ -25,12 +25,18 @@ Look for:
 
 Checks:
 - Confirm endpoint values in UI.
-- Confirm token in query string is the same as shown in token field.
+- Confirm `x-bridge-token` header value matches token field.
 - Confirm backend accepts your optional bearer token if configured.
 - If logs show `diagnosticCategory=network_or_cors`, verify CORS/preflight on backend:
   - `Access-Control-Allow-Origin`
   - `Access-Control-Allow-Headers` must include `x-bridge-token, content-type, authorization`
   - `OPTIONS` should return success for bridge endpoints.
+- Check fallback/probe events:
+  - `http.request.retry_xhr`: fetch failed, runtime is retrying with XHR transport.
+  - `http.request.retry_xhr.success`: XHR worked, so fetch-path compatibility is the issue.
+  - `network.probe.result`: endpoint reachable for the logged transport (`xhr` or `fetch`).
+  - `network.probe.failed`: endpoint not reachable for that transport (DNS/TLS/network/policy).
+  - `runtime.unhandled_error` and `runtime.unhandled_rejection`: uncaught errors with stack details.
 
 ## 3. Telemetry not sending
 Symptoms:

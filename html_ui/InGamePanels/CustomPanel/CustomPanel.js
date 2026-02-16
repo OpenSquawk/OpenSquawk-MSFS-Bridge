@@ -113,6 +113,10 @@ class IngamePanelOpenSquawkBridge extends TemplateElement {
 
     log(level, event, message, details) {
         var payload = "[OpenSquawkToolbarPanel][" + level + "][" + event + "] " + message;
+        if (typeof console === "undefined" || typeof console.log !== "function") {
+            return;
+        }
+
         if (details) {
             console.log(payload, details);
         } else {
@@ -121,7 +125,11 @@ class IngamePanelOpenSquawkBridge extends TemplateElement {
     }
 }
 
-window.customElements.define("ingamepanel-opensquawk-bridge", IngamePanelOpenSquawkBridge);
+if (typeof window !== "undefined" && window.customElements) {
+    if (!window.customElements.get("ingamepanel-opensquawk-bridge")) {
+        window.customElements.define("ingamepanel-opensquawk-bridge", IngamePanelOpenSquawkBridge);
+    }
+}
 
 if (typeof checkAutoload === "function") {
     checkAutoload();
