@@ -1,7 +1,8 @@
-import base64
 import json
 import math
 import os
+import secrets
+import string
 import time
 import urllib.error
 import urllib.parse
@@ -64,7 +65,12 @@ def _build_headers(token: str | None) -> dict[str, str]:
 
 
 def _generate_token() -> str:
-    return base64.urlsafe_b64encode(os.urandom(32)).decode("ascii").rstrip("=")
+    alphabet = string.ascii_uppercase
+    return "".join(secrets.choice(alphabet) for _ in range(6))
+
+
+def _is_valid_pairing_code(token: str) -> bool:
+    return len(token) == 6 and token.isalpha()
 
 
 def _load_config() -> dict[str, Any]:
@@ -94,8 +100,10 @@ def _save_config(payload: dict[str, Any]) -> None:
 def _load_or_create_token() -> tuple[str, bool]:
     config = _load_config()
     token = config.get("token")
-    if isinstance(token, str) and token.strip():
-        return token.strip(), False
+    if isinstance(token, str):
+        token = token.strip()
+        if _is_valid_pairing_code(token):
+            return token, False
 
     token = _generate_token()
     config["token"] = token
