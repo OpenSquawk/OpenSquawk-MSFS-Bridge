@@ -2,7 +2,6 @@ import json
 import math
 import os
 import secrets
-import string
 import time
 import urllib.error
 import urllib.parse
@@ -35,6 +34,11 @@ _aq: AircraftRequests | None = None
 _ae: AircraftEvents | None = None
 
 
+def _log_bridge(message: str) -> None:
+    timestamp = datetime.now(timezone.utc).isoformat()
+    print(f"[{timestamp}] [bridge] {message}", flush=True)
+
+
 def _bridge_base_url() -> str:
     return os.getenv("BRIDGE_BASE_URL", "https://opensquawk.de").rstrip("/")
 
@@ -65,7 +69,7 @@ def _build_headers(token: str | None) -> dict[str, str]:
 
 
 def _generate_token() -> str:
-    alphabet = string.ascii_uppercase
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ"
     return "".join(secrets.choice(alphabet) for _ in range(6))
 
 
@@ -135,6 +139,12 @@ def _request_json(
             return response.status, json.loads(raw)
         except json.JSONDecodeError:
             return response.status, None
+
+
+def _log_telemetry_send(url: str, payload: dict[str, Any]) -> None:
+    latitude = payload.get("latitude")
+    longitude = payload.get("longitude")
+    _log_bridge(f"telemetry_send url={url} lat={latitude} lon={longitude}")
 
 
 def _extract_username(payload: Any) -> str | None:
@@ -339,17 +349,29 @@ def _collect_commands(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
     if _sm is None or _aq is None:
+        _log_bridge("build_telemetry_skip reason=simconnect_objects_missing")
         return None
 
-    if not bool(getattr(_sm, "ok", False)) or not bool(getattr(_sm, "running", False)):
+    sim_ok = bool(getattr(_sm, "ok", False))
+    sim_running = bool(getattr(_sm, "running", False))
+    if not sim_ok:
+        _log_bridge(
+            f"build_telemetry_skip reason=sim_not_ready sim_ok={sim_ok} sim_running={sim_running}"
+        )
         return None
 
     latitude = _to_float(_aq.get("PLANE_LATITUDE"))
     longitude = _to_float(_aq.get("PLANE_LONGITUDE"))
     if latitude is None or longitude is None:
+        _log_bridge(
+            f"build_telemetry_skip reason=missing_coordinates lat={latitude} lon={longitude}"
+        )
         return None
 
     if latitude < -90 or latitude > 90 or longitude < -180 or longitude > 180:
+        _log_bridge(
+            f"build_telemetry_skip reason=invalid_coordinates lat={latitude} lon={longitude}"
+        )
         return None
 
     altitude_true = _to_float(_aq.get("PLANE_ALTITUDE")) or 0.0
@@ -413,75 +435,99 @@ def register():
 
     token, is_new_token = _load_or_create_token()
     _bridge_token = token
+    _log_bridge(f"register_start me_url={_me_url()} token={token}")
 
     if is_new_token:
+        _log_bridge("register_token_created new_token=true")
         login_url = f"{_bridge_base_url()}/bridge/connect?token={urllib.parse.quote(token, safe='')}"
         try:
             webbrowser.open(login_url, new=2)
+            _log_bridge(f"register_login_opened url={login_url}")
         except Exception:
-            pass
+            _log_bridge("register_login_open_failed")
 
     me_url = _me_url()
+    attempt = 0
     while True:
+        attempt += 1
         try:
             url = f"{me_url}?token={urllib.parse.quote(token, safe='')}"
             status, payload = _request_json("GET", url, _build_headers(token))
             if 200 <= status < 300 and not (isinstance(payload, dict) and payload.get("connected") is False):
                 _ensure_simconnect()
                 username = _extract_username(payload)
+                _log_bridge(f"register_success status={status} attempt={attempt} username={username}")
                 return {"token": token, "username": username}
+            _log_bridge(
+                f"register_pending status={status} attempt={attempt} retry_in_sec={LOGIN_POLL_INTERVAL_SECONDS}"
+            )
         except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
-            pass
-        except Exception:
-            pass
+            _log_bridge(
+                f"register_error attempt={attempt} retry_in_sec={LOGIN_POLL_INTERVAL_SECONDS}"
+            )
+        except Exception as exc:
+            _log_bridge(
+                f"register_exception attempt={attempt} error={type(exc).__name__} retry_in_sec={LOGIN_POLL_INTERVAL_SECONDS}"
+            )
 
         time.sleep(LOGIN_POLL_INTERVAL_SECONDS)
 
 
 def send_telemetry() -> int:
     global _bridge_token, _sm, _aq, _ae
+    _log_bridge("telemetry tick!")
 
     if not _bridge_token:
+        _log_bridge("send_telemetry_no_token register_call=true")
         register()
 
     token = _bridge_token
     if not token:
+        _log_bridge("send_telemetry_skip reason=no_token")
         return SIMCONNECT_RETRY_SECONDS
 
     if not _ensure_simconnect():
+        _log_bridge(f"send_telemetry_skip reason=simconnect_not_ready retry_in_sec={SIMCONNECT_RETRY_SECONDS}")
         return SIMCONNECT_RETRY_SECONDS
 
     try:
         payload = _build_telemetry_payload(token)
+        _log_bridge(payload)
     except Exception:
         _sm = None
         _aq = None
         _ae = None
+        _log_bridge(f"send_telemetry_error reason=payload_build_failed retry_in_sec={SIMCONNECT_RETRY_SECONDS}")
         return SIMCONNECT_RETRY_SECONDS
 
     if payload is not None:
+        telemetry_url = _telemetry_url()
+        _log_telemetry_send(telemetry_url, payload)
         try:
             status, response_payload = _request_json(
                 "POST",
-                _telemetry_url(),
+                telemetry_url,
                 _build_headers(token),
                 payload=payload,
             )
             if 200 <= status < 300 and isinstance(response_payload, dict):
                 set_values(response_payload)
         except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
-            pass
-        except Exception:
-            pass
-
+            _log_bridge("send_telemetry_error reason=request_failed")
+        except Exception as exc:
+            _log_bridge(f"send_telemetry_exception error={type(exc).__name__}")
+    else:
+        _log_bridge("telemetry payload is none")
     return TELEMETRY_INTERVAL_SECONDS
 
 
 def telemetry_loop():
+    _log_bridge(f"telemetry_loop_start interval_sec={TELEMETRY_INTERVAL_SECONDS}")
     while True:
         delay = send_telemetry()
         if not isinstance(delay, (int, float)) or delay < 0:
             delay = TELEMETRY_INTERVAL_SECONDS
+            _log_bridge(f"telemetry_loop_delay_invalid fallback_sec={delay}")
         time.sleep(delay)
 
 
