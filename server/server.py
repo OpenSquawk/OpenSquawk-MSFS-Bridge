@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, render_template, request
-from .SimConnect import *
+from SimConnect import *
 from time import sleep
 import random
 
@@ -472,4 +472,5 @@ def custom_emergency(emergency_type):
 	return text_to_return
 
 
-app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+	app.run(host='0.0.0.0', port=5000, debug=True)
