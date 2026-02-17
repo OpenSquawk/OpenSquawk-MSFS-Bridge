@@ -430,7 +430,7 @@ def register():
         time.sleep(LOGIN_POLL_INTERVAL_SECONDS)
 
 
-def send_telemetry():
+def send_telemetry() -> int:
     global _bridge_token, _sm, _aq, _ae
 
     if not _bridge_token:
@@ -438,37 +438,43 @@ def send_telemetry():
 
     token = _bridge_token
     if not token:
-        return
+        return SIMCONNECT_RETRY_SECONDS
 
-    while True:
-        if not _ensure_simconnect():
-            time.sleep(SIMCONNECT_RETRY_SECONDS)
-            continue
+    if not _ensure_simconnect():
+        return SIMCONNECT_RETRY_SECONDS
 
+    try:
+        payload = _build_telemetry_payload(token)
+    except Exception:
+        _sm = None
+        _aq = None
+        _ae = None
+        return SIMCONNECT_RETRY_SECONDS
+
+    if payload is not None:
         try:
-            payload = _build_telemetry_payload(token)
+            status, response_payload = _request_json(
+                "POST",
+                _telemetry_url(),
+                _build_headers(token),
+                payload=payload,
+            )
+            if 200 <= status < 300 and isinstance(response_payload, dict):
+                set_values(response_payload)
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
+            pass
         except Exception:
-            _sm = None
-            _aq = None
-            _ae = None
-            time.sleep(SIMCONNECT_RETRY_SECONDS)
-            continue
-        if payload is not None:
-            try:
-                status, response_payload = _request_json(
-                    "POST",
-                    _telemetry_url(),
-                    _build_headers(token),
-                    payload=payload,
-                )
-                if 200 <= status < 300 and isinstance(response_payload, dict):
-                    set_values(response_payload)
-            except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
-                pass
-            except Exception:
-                pass
+            pass
 
-        time.sleep(TELEMETRY_INTERVAL_SECONDS)
+    return TELEMETRY_INTERVAL_SECONDS
+
+
+def telemetry_loop():
+    while True:
+        delay = send_telemetry()
+        if not isinstance(delay, (int, float)) or delay < 0:
+            delay = TELEMETRY_INTERVAL_SECONDS
+        time.sleep(delay)
 
 
 def set_values(payload):
