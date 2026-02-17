@@ -1,0 +1,84 @@
+{
+  "content": [
+    {
+      "path": "LEGACY-BRIDGE-FUNCTIONALITY.md",
+      "size": 8378,
+      "date": "2026-02-16T21:24:27Z"
+    },
+    {
+      "path": "README.md",
+      "size": 2648,
+      "date": "2026-02-16T21:24:27Z"
+    },
+    {
+      "path": "manifest.json",
+      "size": 344,
+      "date": "2026-02-17T09:46:29Z"
+    },
+    {
+      "path": "wasm/opensquawk_bridge/CMakeLists.txt",
+      "size": 907,
+      "date": "2026-02-17T09:37:31Z"
+    },
+    {
+      "path": "wasm/opensquawk_bridge/src/Bridge.h",
+      "size": 1754,
+      "date": "2026-02-17T09:36:24Z"
+    },
+    {
+      "path": "wasm/opensquawk_bridge/src/Bridge.cpp",
+      "size": 10632,
+      "date": "2026-02-17T09:37:11Z"
+    },
+    {
+      "path": "wasm/opensquawk_bridge/src/exports.cpp",
+      "size": 1669,
+      "date": "2026-02-17T09:37:25Z"
+    },
+    {
+      "path": "docs/WASM-INTEGRATION.md",
+      "size": 1494,
+      "date": "2026-02-17T09:38:52Z"
+    },
+    {
+      "path": "html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_OPEN_SQUAWK.svg",
+      "size": 397,
+      "date": "2026-02-17T09:45:59Z"
+    },
+    {
+      "path": "html_ui/InGamePanels/OpenSquawkBridge/OpenSquawkBridgePanel.js",
+      "size": 3419,
+      "date": "2026-02-17T09:45:53Z"
+    },
+    {
+      "path": "html_ui/InGamePanels/OpenSquawkBridge/OpenSquawkBridge.css",
+      "size": 1675,
+      "date": "2026-02-17T09:45:37Z"
+    },
+    {
+      "path": "html_ui/InGamePanels/OpenSquawkBridge/OpenSquawkBridge.html",
+      "size": 1893,
+      "date": "2026-02-17T09:45:25Z"
+    },
+    {
+      "path": "html_ui/InGamePanels/PanelDefinitions/OpenSquawkBridge.xml",
+      "size": 330,
+      "date": "2026-02-17T09:46:25Z"
+    },
+    {
+      "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.js",
+      "size": 12048,
+      "date": "2026-02-17T09:46:05Z"
+    },
+    {
+      "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.css",
+      "size": 159,
+      "date": "2026-02-17T09:38:37Z"
+    },
+    {
+      "path": "html_ui/Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.html",
+      "size": 301,
+      "date": "2026-02-17T09:38:34Z"
+    }
+  ]
+}

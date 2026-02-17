@@ -370,7 +370,17 @@
     // Expose login URL for UI (optional)
     window.OpenSquawkBridge = {
       loginUrl: urls.loginUrl,
+      forceLoginPoll: () => pollLogin(config, urls),
+      lastTelemetryAt: state.lastTelemetryAt,
+      lastFlightActive: state.inFlight,
     };
+
+    setInterval(() => {
+      if (window.OpenSquawkBridge) {
+        window.OpenSquawkBridge.lastTelemetryAt = state.lastTelemetryAt;
+        window.OpenSquawkBridge.lastFlightActive = state.inFlight;
+      }
+    }, 1000);
   }
 
   if (document.readyState === "loading") {

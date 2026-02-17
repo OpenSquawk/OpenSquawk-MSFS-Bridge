@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OpenSquawk Bridge</title>
+    <link rel="stylesheet" href="OpenSquawkBridge.css" />
+  </head>
+  <body>
+    <div class="panel">
+      <div class="panel__header">
+        <div class="panel__title">OpenSquawk Bridge</div>
+        <div class="panel__status" id="osb-status">disconnected</div>
+      </div>
+
+      <div class="panel__section">
+        <div class="label">Token</div>
+        <input id="osb-token" class="input" readonly />
+        <div class="row">
+          <button id="osb-copy" class="btn">Copy token</button>
+          <button id="osb-reset" class="btn btn--danger">Reset token</button>
+        </div>
+      </div>
+
+      <div class="panel__section">
+        <div class="label">Login URL</div>
+        <input id="osb-login" class="input" readonly />
+        <div class="row">
+          <button id="osb-open" class="btn">Open login</button>
+          <button id="osb-poll" class="btn">Force login poll</button>
+        </div>
+      </div>
+
+      <div class="panel__section">
+        <div class="label">Endpoints</div>
+        <input id="osb-base" class="input" placeholder="https://opensquawk.de" />
+        <input id="osb-auth" class="input" placeholder="Bearer token (optional)" />
+        <div class="row">
+          <button id="osb-save" class="btn">Save config</button>
+        </div>
+      </div>
+
+      <div class="panel__section">
+        <div class="label">Telemetry</div>
+        <div class="grid">
+          <div>Sim</div><div id="osb-sim">unknown</div>
+          <div>Flight</div><div id="osb-flight">unknown</div>
+          <div>Last telemetry</div><div id="osb-last">-</div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../../Pages/VCockpit/Instruments/OpenSquawkBridge/OpenSquawkBridge.js"></script>
+    <script src="OpenSquawkBridgePanel.js"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<InGamePanelDefinition>
+  <Name>OpenSquawk Bridge</Name>
+  <Category>Tools</Category>
+  <Icon>html_ui/Textures/Menu/toolbar/ICON_TOOLBAR_OPEN_SQUAWK.svg</Icon>
+  <Size>640,460</Size>
+  <HTMLFile>html_ui/InGamePanels/OpenSquawkBridge/OpenSquawkBridge.html</HTMLFile>
+</InGamePanelDefinition>
