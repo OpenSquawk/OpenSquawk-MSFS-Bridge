@@ -490,6 +490,32 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
     parking_brake = (_to_float(_aq.get("BRAKE_PARKING_POSITION")) or 0.0) >= 0.5
     autopilot_master = (_to_float(_aq.get("AUTOPILOT_MASTER")) or 0.0) >= 0.5
 
+    def _get_bool(*keys: str) -> bool:
+        for key in keys:
+            value = _to_float(_aq.get(key))
+            if value is not None:
+                return value >= 0.5
+        return False
+
+    seat_belt_signs = _get_bool("CABIN_SEATBELTS_ALERT_SWITCH")
+    nose_light = _get_bool("LIGHT_TAXI", "LIGHT_TAXI_ON")
+    runway_turn_off_lights = _get_bool("LIGHT_RECOGNITION", "LIGHT_RECOGNITION_ON")
+    landing_lights = _get_bool("LIGHT_LANDING", "LIGHT_LANDING_ON")
+    strobe = _get_bool("LIGHT_STROBE", "LIGHT_STROBE_ON")
+    beacon = _get_bool("LIGHT_BEACON", "LIGHT_BEACON_ON")
+    wing_lights = _get_bool("LIGHT_WING", "LIGHT_WING_ON")
+    nav_light = _get_bool("LIGHT_NAV", "LIGHT_NAV_ON")
+    logo_light = _get_bool("LIGHT_LOGO", "LIGHT_LOGO_ON")
+    nav_logo_lights = nav_light or logo_light
+    dome_light = _get_bool("LIGHT_CABIN", "LIGHT_CABIN_ON")
+
+    master_apu = _get_bool("APU_SWITCH", "APU_GENERATOR_SWITCH")
+    start_apu = (_to_float(_aq.get("APU_PCT_STARTER")) or 0.0) >= 0.5
+    bleed_air_apu = _to_float(_aq.get("BLEED_AIR_APU"))
+    apu_bleed = (bleed_air_apu is not None and bleed_air_apu >= 0.5) or (
+        (_to_float(_aq.get("BLEED_AIR_SOURCE_CONTROL")) or 0.0) == 3.0
+    )
+
     payload: dict[str, Any] = {
         "token": token,
         "status": "active",
@@ -514,6 +540,18 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
         "flaps_index": int(round(flaps_index)),
         "parking_brake": parking_brake,
         "autopilot_master": autopilot_master,
+        "seat_belt_signs": seat_belt_signs,
+        "nose_light": nose_light,
+        "runway_turn_off_lights": runway_turn_off_lights,
+        "landing_lights": landing_lights,
+        "strobe": strobe,
+        "beacon": beacon,
+        "wing_lights": wing_lights,
+        "nav_logo_lights": nav_logo_lights,
+        "dome_light": dome_light,
+        "master_apu": master_apu,
+        "start_apu": start_apu,
+        "apu_bleed": apu_bleed,
     }
 
     return payload
