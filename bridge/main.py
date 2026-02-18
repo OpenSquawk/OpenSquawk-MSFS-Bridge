@@ -265,7 +265,7 @@ def _sim_ready_for_commands() -> bool:
     if _sm is None or _aq is None or _ae is None:
         return False
 
-    return bool(getattr(_sm, "ok", False)) and bool(getattr(_sm, "running", False))
+    return bool(getattr(_sm, "ok", False))
 
 
 def _force_set_simvar(key: str, value: float) -> bool:
