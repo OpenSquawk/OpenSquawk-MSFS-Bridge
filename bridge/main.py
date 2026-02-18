@@ -309,6 +309,7 @@ def _reset_auto_ack_master_warn_state() -> None:
     _master_warning_seen = False
     _master_caution_ack_deadline = None
     _master_warning_ack_deadline = None
+    _log_bridge("auto_ack_master_warn state_reset=true")
 
 
 def _read_master_alerts() -> tuple[bool | None, bool | None]:
@@ -323,11 +324,13 @@ def _read_master_alerts() -> tuple[bool | None, bool | None]:
 
 
 def _ack_master_caution() -> None:
-    _send_event("MASTER_CAUTION_ACKNOWLEDGE")
+    if _send_event("MASTER_CAUTION_ACKNOWLEDGE"):
+        _log_bridge("auto_ack_master_warn ack=master_caution")
 
 
 def _ack_master_warning() -> None:
-    _send_event("MASTER_WARNING_ACKNOWLEDGE")
+    if _send_event("MASTER_WARNING_ACKNOWLEDGE"):
+        _log_bridge("auto_ack_master_warn ack=master_warning")
 
 
 def _tick_auto_ack_master_warn() -> None:
@@ -348,6 +351,9 @@ def _tick_auto_ack_master_warn() -> None:
                 _ack_master_caution()
             else:
                 _master_caution_ack_deadline = now + _auto_ack_master_warn
+                _log_bridge(
+                    f"auto_ack_master_warn schedule=master_caution delay_sec={_auto_ack_master_warn}"
+                )
             _master_caution_seen = True
     elif caution_active is False:
         _master_caution_seen = False
@@ -359,6 +365,9 @@ def _tick_auto_ack_master_warn() -> None:
                 _ack_master_warning()
             else:
                 _master_warning_ack_deadline = now + _auto_ack_master_warn
+                _log_bridge(
+                    f"auto_ack_master_warn schedule=master_warning delay_sec={_auto_ack_master_warn}"
+                )
             _master_warning_seen = True
     elif warning_active is False:
         _master_warning_seen = False
@@ -626,6 +635,7 @@ def set_values(payload):
             if parsed < 0:
                 parsed = -1
             _auto_ack_master_warn = parsed
+            _log_bridge(f"auto_ack_master_warn set value={_auto_ack_master_warn}")
             _reset_auto_ack_master_warn_state()
             continue
 
