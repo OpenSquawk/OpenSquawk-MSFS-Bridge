@@ -336,11 +336,12 @@ def _ack_master_warning() -> None:
 
 def _tick_auto_ack_master_warn() -> None:
     global _master_caution_seen, _master_warning_seen, _master_caution_ack_deadline, _master_warning_ack_deadline
-
     if _auto_ack_master_warn < 0:
+        _log_bridge("auto_ack disabled")
         return
 
     if not _sim_ready_for_commands():
+        _log_bridge("auto_ack: sim not ready")
         return
 
     caution_active, warning_active = _read_master_alerts()
