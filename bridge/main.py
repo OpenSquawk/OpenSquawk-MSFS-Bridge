@@ -17,7 +17,7 @@ from SimConnect import AircraftEvents, AircraftRequests, SimConnect
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "bridge-config.json"
 HTTP_TIMEOUT_SECONDS = 10
 LOGIN_POLL_INTERVAL_SECONDS = 10
-TELEMETRY_INTERVAL_SECONDS = 5
+TELEMETRY_INTERVAL_SECONDS = 2
 SIMCONNECT_RETRY_SECONDS = 2
 
 TRUE_LITERALS = {"1", "true", "yes", "on"}
@@ -394,7 +394,7 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
     vertical_speed = _to_float(_aq.get("VERTICAL_SPEED")) or 0.0
 
     pitch_rad = _to_float(_aq.get("PLANE_PITCH_DEGREES")) or 0.0
-    pitch_deg = math.degrees(pitch_rad)
+    pitch_deg = -math.degrees(pitch_rad)
 
     gear_handle = (_to_float(_aq.get("GEAR_HANDLE_POSITION")) or 0.0) >= 0.5
     flaps_index = _to_float(_aq.get("FLAPS_HANDLE_INDEX")) or 0.0
