@@ -541,9 +541,14 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
         "glareshield": round(_get_light_pot(12), 3),
         "ambient": round(_get_light_pot(13), 3),
     }
-    lightdefs = {
-        "18": "Type:4#Index:0#LocalPosition:-1.2,0.65,14.0#LocalRotation:0,0,0#EffectFile:fx_cockpit_small_yellow",
-    }
+    lightdef_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18]
+    lightdefs: dict[str, str] = {}
+    for lightdef_id in lightdef_ids:
+        value = _aq.get(f"LIGHT_DEF:{lightdef_id}")
+        if isinstance(value, str):
+            text = value.strip()
+            if text:
+                lightdefs[str(lightdef_id)] = text
 
     payload: dict[str, Any] = {
         "token": token,
