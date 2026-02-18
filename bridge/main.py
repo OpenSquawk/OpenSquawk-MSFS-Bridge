@@ -497,8 +497,7 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
                 return value >= 0.5
         return False
 
-    def _get_light_pot_percent(index: int) -> float:
-        value = _to_float(_aq.get(f"LIGHT_POTENTIOMETER:{index}"))
+    def _normalize_percent(value: float | None) -> float:
         if value is None:
             return 0.0
         if value < 0:
@@ -509,33 +508,24 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
             return 100.0
         return value
 
-    def _get_power_setting_percent(power_key: str, *fallback_keys: str) -> float:
-        power_value = _to_float(_aq.get(power_key))
-        if power_value is not None:
-            if power_value < 0:
-                return 0.0
-            if power_value <= 1.0:
-                power_value *= 100.0
-            if power_value > 100.0:
-                return 100.0
-            return power_value
-        return 100.0 if _get_bool(*fallback_keys) else 0.0
+    def _get_light_percent(index: int, power_key: str | None = None) -> float:
+        if power_key:
+            power_value = _to_float(_aq.get(power_key))
+            if power_value is not None:
+                return _normalize_percent(power_value)
+        return _normalize_percent(_to_float(_aq.get(f"LIGHT_POTENTIOMETER:{index}")))
 
     seat_belt_signs = _get_bool("CABIN_SEATBELTS_ALERT_SWITCH")
-    nose_light = _get_power_setting_percent("LIGHT_TAXI_POWER_SETTING", "LIGHT_TAXI", "LIGHT_TAXI_ON")
-    runway_turn_off_lights = _get_power_setting_percent(
-        "LIGHT_RECOGNITION_POWER_SETTING", "LIGHT_RECOGNITION", "LIGHT_RECOGNITION_ON"
-    )
-    landing_lights = _get_power_setting_percent(
-        "LIGHT_LANDING_POWER_SETTING", "LIGHT_LANDING", "LIGHT_LANDING_ON"
-    )
-    strobe = _get_power_setting_percent("LIGHT_STROBE_POWER_SETTING", "LIGHT_STROBE", "LIGHT_STROBE_ON")
-    beacon = _get_power_setting_percent("LIGHT_BEACON_POWER_SETTING", "LIGHT_BEACON", "LIGHT_BEACON_ON")
-    wing_lights = _get_power_setting_percent("LIGHT_WING_POWER_SETTING", "LIGHT_WING", "LIGHT_WING_ON")
-    nav_light = _get_power_setting_percent("LIGHT_NAV_POWER_SETTING", "LIGHT_NAV", "LIGHT_NAV_ON")
-    logo_light = _get_power_setting_percent("LIGHT_LOGO_POWER_SETTING", "LIGHT_LOGO", "LIGHT_LOGO_ON")
+    beacon = _get_light_percent(1)
+    strobe = _get_light_percent(2)
+    nav_light = _get_light_percent(3)
+    landing_lights = _get_light_percent(5)
+    nose_light = _get_light_percent(6)
+    runway_turn_off_lights = _get_light_percent(7)
+    wing_lights = _get_light_percent(8)
+    logo_light = _get_light_percent(9)
+    dome_light = _get_light_percent(10, "LIGHT_CABIN_POWER_SETTING")
     nav_logo_lights = max(nav_light, logo_light)
-    dome_light = _get_power_setting_percent("LIGHT_CABIN_POWER_SETTING", "LIGHT_CABIN", "LIGHT_CABIN_ON")
 
     master_apu = _get_bool("APU_SWITCH", "APU_GENERATOR_SWITCH")
     start_apu = (_to_float(_aq.get("APU_PCT_STARTER")) or 0.0) >= 0.5
@@ -545,19 +535,19 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
     )
 
     lights = {
-        "beacon": round(_get_light_pot_percent(1), 1),
-        "strobe": round(_get_light_pot_percent(2), 1),
-        "navigation": round(_get_light_pot_percent(3), 1),
-        "panel": round(_get_light_pot_percent(4), 1),
-        "landing": round(_get_light_pot_percent(5), 1),
-        "taxi": round(_get_light_pot_percent(6), 1),
-        "recognition": round(_get_light_pot_percent(7), 1),
-        "wing": round(_get_light_pot_percent(8), 1),
-        "logo": round(_get_light_pot_percent(9), 1),
-        "cabin": round(_get_light_pot_percent(10), 1),
-        "pedestal": round(_get_light_pot_percent(11), 1),
-        "glareshield": round(_get_light_pot_percent(12), 1),
-        "ambient": round(_get_light_pot_percent(13), 1),
+        "beacon": round(_get_light_percent(1), 1),
+        "strobe": round(_get_light_percent(2), 1),
+        "navigation": round(_get_light_percent(3), 1),
+        "panel": round(_get_light_percent(4, "LIGHT_PANEL_POWER_SETTING"), 1),
+        "landing": round(_get_light_percent(5), 1),
+        "taxi": round(_get_light_percent(6), 1),
+        "recognition": round(_get_light_percent(7), 1),
+        "wing": round(_get_light_percent(8), 1),
+        "logo": round(_get_light_percent(9), 1),
+        "cabin": round(_get_light_percent(10, "LIGHT_CABIN_POWER_SETTING"), 1),
+        "pedestal": round(_get_light_percent(11, "LIGHT_PEDESTRAL_POWER_SETTING"), 1),
+        "glareshield": round(_get_light_percent(12, "LIGHT_GLARESHIELD_POWER_SETTING"), 1),
+        "ambient": round(_get_light_percent(13), 1),
     }
 
     payload: dict[str, Any] = {
