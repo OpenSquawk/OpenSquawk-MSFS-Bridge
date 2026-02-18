@@ -497,6 +497,16 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
                 return value >= 0.5
         return False
 
+    def _get_light_pot(index: int) -> float:
+        value = _to_float(_aq.get(f"LIGHT_POTENTIOMETER:{index}"))
+        if value is None:
+            return 0.0
+        if value < 0:
+            return 0.0
+        if value > 1:
+            return 1.0
+        return value
+
     seat_belt_signs = _get_bool("CABIN_SEATBELTS_ALERT_SWITCH")
     nose_light = _get_bool("LIGHT_TAXI", "LIGHT_TAXI_ON")
     runway_turn_off_lights = _get_bool("LIGHT_RECOGNITION", "LIGHT_RECOGNITION_ON")
@@ -515,6 +525,25 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
     apu_bleed = (bleed_air_apu is not None and bleed_air_apu >= 0.5) or (
         (_to_float(_aq.get("BLEED_AIR_SOURCE_CONTROL")) or 0.0) == 3.0
     )
+
+    lights = {
+        "beacon": round(_get_light_pot(1), 3),
+        "strobe": round(_get_light_pot(2), 3),
+        "navigation": round(_get_light_pot(3), 3),
+        "panel": round(_get_light_pot(4), 3),
+        "landing": round(_get_light_pot(5), 3),
+        "taxi": round(_get_light_pot(6), 3),
+        "recognition": round(_get_light_pot(7), 3),
+        "wing": round(_get_light_pot(8), 3),
+        "logo": round(_get_light_pot(9), 3),
+        "cabin": round(_get_light_pot(10), 3),
+        "pedestal": round(_get_light_pot(11), 3),
+        "glareshield": round(_get_light_pot(12), 3),
+        "ambient": round(_get_light_pot(13), 3),
+    }
+    lightdefs = {
+        "18": "Type:4#Index:0#LocalPosition:-1.2,0.65,14.0#LocalRotation:0,0,0#EffectFile:fx_cockpit_small_yellow",
+    }
 
     payload: dict[str, Any] = {
         "token": token,
@@ -552,6 +581,8 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
         "master_apu": master_apu,
         "start_apu": start_apu,
         "apu_bleed": apu_bleed,
+        "lights": lights,
+        "lightdefs": lightdefs,
     }
 
     return payload

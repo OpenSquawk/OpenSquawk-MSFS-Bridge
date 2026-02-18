@@ -430,6 +430,7 @@ class AircraftRequests():
 			"LIGHT_NAV_ON": ["Return true if the light is on.", b'LIGHT NAV ON', b'Bool', 'N'],
 			"LIGHT_BEACON_ON": ["Return true if the light is on.", b'LIGHT BEACON ON', b'Bool', 'N'],
 			"LIGHT_LANDING_ON": ["Return true if the light is on.", b'LIGHT LANDING ON', b'Bool', 'N'],
+			"LIGHT_POTENTIOMETER:index": ["Light potentiometer (0-1) for light definition index", b'LIGHT POTENTIOMETER:index', b'Percent over 100', 'N'],
 		}
 
 	class __AircraftPositionandSpeedData(RequestHelper):
