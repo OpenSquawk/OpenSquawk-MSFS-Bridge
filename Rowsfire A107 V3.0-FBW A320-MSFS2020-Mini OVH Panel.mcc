@@ -737,18 +737,6 @@
     </config>
   </outputs>
   <inputs>
-    <config guid="bfbe3d58-d6bf-435e-90a8-fe7e33ed8526">
-      <active>true</active>
-      <description>STROBE ON</description>
-      <settings msdata:InstanceType="MobiFlight.InputConfigItem, MFConnector, Version=10.5.3.0, Culture=neutral, PublicKeyToken=null" serial="Rowsfire A107 V3/ SN-DE1-C46" name="Multiplexer 3" type="InputMultiplexer" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
-        <inputMultiplexer DataPin="0">
-          <onPress type="MSFS2020CustomInputAction" command="2 (&gt;L:LIGHTING_STROBE_0)&#xA;0 (&gt;L:STROBE_0_Auto) 0 0 r (&gt;K:2:STROBES_SET)" presetId="909a1e70-5ea4-4d9c-b043-7ed97e60c364" />
-          <onRelease type="MSFS2020CustomInputAction" command="1 (&gt;L:LIGHTING_STROBE_0)&#xA;1 (&gt;L:STROBE_0_Auto) 1 0 r (&gt;K:2:STROBES_SET)" presetId="19f524cc-75b6-464f-b69c-9b328e701bf9" />
-        </inputMultiplexer>
-        <preconditions />
-        <configrefs />
-      </settings>
-    </config>
     <config guid="f4ffcc94-0a62-4f91-9462-b02103753713">
       <active>true</active>
       <description>STROBE AUTO</description>
@@ -780,6 +768,18 @@
         <inputMultiplexer DataPin="2">
           <onPress type="MSFS2020CustomInputAction" command="0 1 (&gt;K:2:BEACON_LIGHTS_SET) " presetId="259347a1-5984-4e21-8bc4-dfe3a7f6be7a" />
           <onRelease type="MSFS2020CustomInputAction" command="0 (&gt;K:BEACON_LIGHTS_SET)" presetId="00928f01-b8eb-4e44-b9a7-c42a03d36ece" />
+        </inputMultiplexer>
+        <preconditions />
+        <configrefs />
+      </settings>
+    </config>
+    <config guid="bfbe3d58-d6bf-435e-90a8-fe7e33ed8526">
+      <active>true</active>
+      <description>STROBE ON</description>
+      <settings msdata:InstanceType="MobiFlight.InputConfigItem, MFConnector, Version=10.5.3.0, Culture=neutral, PublicKeyToken=null" serial="Rowsfire A107 V3/ SN-DE1-C46" name="Multiplexer 3" type="InputMultiplexer" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+        <inputMultiplexer DataPin="0">
+          <onPress type="MSFS2020CustomInputAction" command="2 (&gt;L:LIGHTING_STROBE_0)&#xA;0 (&gt;L:STROBE_0_Auto) 0 0 r (&gt;K:2:STROBES_SET)" presetId="909a1e70-5ea4-4d9c-b043-7ed97e60c364" />
+          <onRelease type="MSFS2020CustomInputAction" command="1 (&gt;L:LIGHTING_STROBE_0)&#xA;1 (&gt;L:STROBE_0_Auto) 1 0 r (&gt;K:2:STROBES_SET)" presetId="19f524cc-75b6-464f-b69c-9b328e701bf9" />
         </inputMultiplexer>
         <preconditions />
         <configrefs />
