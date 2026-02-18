@@ -497,35 +497,17 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
                 return value >= 0.5
         return False
 
-    def _normalize_percent(value: float | None) -> float:
-        if value is None:
-            return 0.0
-        if value < 0:
-            return 0.0
-        if value <= 1.0:
-            value *= 100.0
-        if value > 100.0:
-            return 100.0
-        return value
-
-    def _get_light_percent(index: int, power_key: str | None = None) -> float:
-        if power_key:
-            power_value = _to_float(_aq.get(power_key))
-            if power_value is not None:
-                return _normalize_percent(power_value)
-        return _normalize_percent(_to_float(_aq.get(f"LIGHT_POTENTIOMETER:{index}")))
-
     seat_belt_signs = _get_bool("CABIN_SEATBELTS_ALERT_SWITCH")
-    beacon = _get_light_percent(1)
-    strobe = _get_light_percent(2)
-    nav_light = _get_light_percent(3)
-    landing_lights = _get_light_percent(5)
-    nose_light = _get_light_percent(6)
-    runway_turn_off_lights = _get_light_percent(7)
-    wing_lights = _get_light_percent(8)
-    logo_light = _get_light_percent(9)
-    dome_light = _get_light_percent(10, "LIGHT_CABIN_POWER_SETTING")
-    nav_logo_lights = max(nav_light, logo_light)
+    beacon = _get_bool("LIGHT_BEACON_ON", "LIGHT_BEACON")
+    strobe = _get_bool("LIGHT_STROBE_ON", "LIGHT_STROBE")
+    nav_light = _get_bool("LIGHT_NAV_ON", "LIGHT_NAV")
+    landing_lights = _get_bool("LIGHT_LANDING_ON", "LIGHT_LANDING")
+    nose_light = _get_bool("LIGHT_TAXI_ON", "LIGHT_TAXI")
+    runway_turn_off_lights = _get_bool("LIGHT_RECOGNITION_ON", "LIGHT_RECOGNITION")
+    wing_lights = _get_bool("LIGHT_WING_ON", "LIGHT_WING")
+    logo_light = _get_bool("LIGHT_LOGO_ON", "LIGHT_LOGO")
+    dome_light = _get_bool("LIGHT_CABIN_ON", "LIGHT_CABIN")
+    nav_logo_lights = nav_light or logo_light
 
     master_apu = _get_bool("APU_SWITCH", "APU_GENERATOR_SWITCH")
     start_apu = (_to_float(_aq.get("APU_PCT_STARTER")) or 0.0) >= 0.5
@@ -533,22 +515,6 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
     apu_bleed = (bleed_air_apu is not None and bleed_air_apu >= 0.5) or (
         (_to_float(_aq.get("BLEED_AIR_SOURCE_CONTROL")) or 0.0) == 3.0
     )
-
-    lights = {
-        "beacon": round(_get_light_percent(1), 1),
-        "strobe": round(_get_light_percent(2), 1),
-        "navigation": round(_get_light_percent(3), 1),
-        "panel": round(_get_light_percent(4, "LIGHT_PANEL_POWER_SETTING"), 1),
-        "landing": round(_get_light_percent(5), 1),
-        "taxi": round(_get_light_percent(6), 1),
-        "recognition": round(_get_light_percent(7), 1),
-        "wing": round(_get_light_percent(8), 1),
-        "logo": round(_get_light_percent(9), 1),
-        "cabin": round(_get_light_percent(10, "LIGHT_CABIN_POWER_SETTING"), 1),
-        "pedestal": round(_get_light_percent(11, "LIGHT_PEDESTRAL_POWER_SETTING"), 1),
-        "glareshield": round(_get_light_percent(12, "LIGHT_GLARESHIELD_POWER_SETTING"), 1),
-        "ambient": round(_get_light_percent(13), 1),
-    }
 
     payload: dict[str, Any] = {
         "token": token,
@@ -586,7 +552,6 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
         "master_apu": master_apu,
         "start_apu": start_apu,
         "apu_bleed": apu_bleed,
-        "lights": lights,
     }
 
     return payload
