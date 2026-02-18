@@ -541,9 +541,6 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
         "glareshield": round(_get_light_pot(12), 3),
         "ambient": round(_get_light_pot(13), 3),
     }
-    lightdefs = {
-        "18": "Type:4#Index:0#LocalPosition:-1.2,0.65,14.0#LocalRotation:0,0,0#EffectFile:fx_cockpit_small_yellow",
-    }
 
     payload: dict[str, Any] = {
         "token": token,
@@ -582,7 +579,6 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
         "start_apu": start_apu,
         "apu_bleed": apu_bleed,
         "lights": lights,
-        "lightdefs": lightdefs,
     }
 
     return payload
