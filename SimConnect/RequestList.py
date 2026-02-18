@@ -874,8 +874,8 @@ class AircraftRequests():
 		list = {
 			"SMOKE_ENABLE": ["Set to True to activate the smoke system, if one is available (for example, on the Extra).", b'SMOKE ENABLE', b'Bool', 'Y'],
 			"SMOKESYSTEM_AVAILABLE": ["Smoke system available", b'SMOKESYSTEM AVAILABLE', b'Bool', 'N'],
-			"MASTER_CAUTION_ACTIVE": ["Master caution active", b'MASTER CAUTION', b'Bool', 'N'],
-			"MASTER_WARNING_ACTIVE": ["Master warning active", b'MASTER WARNING', b'Bool', 'N'],
+			"MASTER_CAUTION": ["Master caution active", b'MASTER CAUTION ACTIVE', b'Bool', 'N'],
+			"MASTER_WARNING": ["Master warning active", b'MASTER WARNING ACTIVE', b'Bool', 'N'],
 			"PITOT_HEAT": ["Pitot heat active", b'PITOT HEAT', b'Bool', 'N'],
 			"FOLDING_WING_LEFT_PERCENT": ["Left folding wing position, 100 is fully folded", b'FOLDING WING LEFT PERCENT', b'Percent Over 100', 'Y'],
 			"FOLDING_WING_RIGHT_PERCENT": ["Right folding wing position, 100 is fully folded", b'FOLDING WING RIGHT PERCENT', b'Percent Over 100', 'Y'],
