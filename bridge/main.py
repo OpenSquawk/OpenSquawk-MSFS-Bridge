@@ -579,7 +579,7 @@ def send_telemetry() -> int:
         _log_bridge(f"send_telemetry_skip reason=simconnect_not_ready retry_in_sec={SIMCONNECT_RETRY_SECONDS}")
         return SIMCONNECT_RETRY_SECONDS
 
-    _tick_auto_ack_master_warn()
+    # _tick_auto_ack_master_warn()
 
     try:
         payload = _build_telemetry_payload(token)
