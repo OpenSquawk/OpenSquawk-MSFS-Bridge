@@ -320,7 +320,7 @@ def _read_master_alerts() -> tuple[bool | None, bool | None]:
     warning = _to_float(_aq.get("MASTER_WARNING"))
     caution_active = None if caution is None else caution >= 0.5
     warning_active = None if warning is None else warning >= 0.5
-    _log_bridge("caut/warn: " + caution_active + "/" + warning_active)
+    _log_bridge("caut/warn: " + str(caution_active) + "/" + str(warning_active))
     return caution_active, warning_active
 
 
