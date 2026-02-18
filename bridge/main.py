@@ -517,7 +517,11 @@ def _build_telemetry_payload(token: str) -> dict[str, Any] | None:
     nav_light = _get_bool("LIGHT_NAV", "LIGHT_NAV_ON")
     logo_light = _get_bool("LIGHT_LOGO", "LIGHT_LOGO_ON")
     nav_logo_lights = nav_light or logo_light
-    dome_light = _get_bool("LIGHT_CABIN", "LIGHT_CABIN_ON")
+    cabin_power_setting = _to_float(_aq.get("LIGHT_CABIN_POWER_SETTING"))
+    if cabin_power_setting is None:
+        dome_light = _get_bool("LIGHT_CABIN")
+    else:
+        dome_light = cabin_power_setting >= 0.5
 
     master_apu = _get_bool("APU_SWITCH", "APU_GENERATOR_SWITCH")
     start_apu = (_to_float(_aq.get("APU_PCT_STARTER")) or 0.0) >= 0.5
