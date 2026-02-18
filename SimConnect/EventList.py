@@ -858,6 +858,8 @@ class AircraftEvents():
 			(b'RETRACT_FLOAT_SWITCH_INC', "If the plane has retractable floats, moves the retract position from Retract to Neutral, or Neutral to Extend.", "Shared Cockpit"),
 			(b'TOGGLE_WATER_BALLAST_VALVE', "Turn the water ballast valve on or off.", "Shared Cockpit"),
 			(b'TOGGLE_VARIOMETER_SWITCH', "Turn the variometer on or off.", "Shared Cockpit"),
+			(b'MASTER_CAUTION_ACKNOWLEDGE', "Acknowledge master caution", "All aircraft"),
+			(b'MASTER_WARNING_ACKNOWLEDGE', "Acknowledge master warning", "All aircraft"),
 			(b'TOGGLE_TURN_INDICATOR_SWITCH', "Turn the turn indicator on or off.", "Shared Cockpit"),
 			(b'APU_STARTER', "Start up the auxiliary power unit (APU),.", "Shared Cockpit"),
 			(b'APU_OFF_SWITCH', "Turn the APU off.", "Shared Cockpit"),

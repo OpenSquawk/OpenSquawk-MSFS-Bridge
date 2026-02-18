@@ -27,11 +27,17 @@ TRANSPONDER_KEYS = {"transponder_code", "transponder", "xpdr", "squawk"}
 ADF_ACTIVE_KEYS = {"adf_active_freq", "adf_active_frequency"}
 ADF_STANDBY_KEYS = {"adf_standby_freq_hz", "adf_standby_frequency_hz", "adf_standby_freq"}
 FLAPS_KEYS = {"flaps_index", "flaps_handle_index"}
+AUTO_ACK_MASTER_WARN_DEFAULT = -1
 
 _bridge_token: str | None = None
 _sm: SimConnect | None = None
 _aq: AircraftRequests | None = None
 _ae: AircraftEvents | None = None
+_auto_ack_master_warn: float = AUTO_ACK_MASTER_WARN_DEFAULT
+_master_caution_seen = False
+_master_warning_seen = False
+_master_caution_ack_deadline: float | None = None
+_master_warning_ack_deadline: float | None = None
 
 
 def _log_bridge(message: str) -> None:
@@ -297,6 +303,78 @@ def _send_event(name: str, value: int | None = None) -> bool:
         return False
 
 
+def _reset_auto_ack_master_warn_state() -> None:
+    global _master_caution_seen, _master_warning_seen, _master_caution_ack_deadline, _master_warning_ack_deadline
+    _master_caution_seen = False
+    _master_warning_seen = False
+    _master_caution_ack_deadline = None
+    _master_warning_ack_deadline = None
+
+
+def _read_master_alerts() -> tuple[bool | None, bool | None]:
+    if _aq is None:
+        return None, None
+
+    caution = _to_float(_aq.get("MASTER_CAUTION"))
+    warning = _to_float(_aq.get("MASTER_WARNING"))
+    caution_active = None if caution is None else caution >= 0.5
+    warning_active = None if warning is None else warning >= 0.5
+    return caution_active, warning_active
+
+
+def _ack_master_caution() -> None:
+    _send_event("MASTER_CAUTION_ACKNOWLEDGE")
+
+
+def _ack_master_warning() -> None:
+    _send_event("MASTER_WARNING_ACKNOWLEDGE")
+
+
+def _tick_auto_ack_master_warn() -> None:
+    global _master_caution_seen, _master_warning_seen, _master_caution_ack_deadline, _master_warning_ack_deadline
+
+    if _auto_ack_master_warn < 0:
+        return
+
+    if not _sim_ready_for_commands():
+        return
+
+    caution_active, warning_active = _read_master_alerts()
+    now = time.time()
+
+    if caution_active is True:
+        if not _master_caution_seen:
+            if _auto_ack_master_warn <= 0:
+                _ack_master_caution()
+            else:
+                _master_caution_ack_deadline = now + _auto_ack_master_warn
+            _master_caution_seen = True
+    elif caution_active is False:
+        _master_caution_seen = False
+        _master_caution_ack_deadline = None
+
+    if warning_active is True:
+        if not _master_warning_seen:
+            if _auto_ack_master_warn <= 0:
+                _ack_master_warning()
+            else:
+                _master_warning_ack_deadline = now + _auto_ack_master_warn
+            _master_warning_seen = True
+    elif warning_active is False:
+        _master_warning_seen = False
+        _master_warning_ack_deadline = None
+
+    if _master_caution_ack_deadline is not None and now >= _master_caution_ack_deadline:
+        if caution_active is True:
+            _ack_master_caution()
+        _master_caution_ack_deadline = None
+
+    if _master_warning_ack_deadline is not None and now >= _master_warning_ack_deadline:
+        if warning_active is True:
+            _ack_master_warning()
+        _master_warning_ack_deadline = None
+
+
 def _encode_transponder_bcd(code: int) -> int | None:
     if code < 0:
         return None
@@ -490,6 +568,8 @@ def send_telemetry() -> int:
         _log_bridge(f"send_telemetry_skip reason=simconnect_not_ready retry_in_sec={SIMCONNECT_RETRY_SECONDS}")
         return SIMCONNECT_RETRY_SECONDS
 
+    _tick_auto_ack_master_warn()
+
     try:
         payload = _build_telemetry_payload(token)
         _log_bridge(payload)
@@ -532,15 +612,30 @@ def telemetry_loop():
 
 
 def set_values(payload):
+    global _auto_ack_master_warn
     if not isinstance(payload, dict):
-        return
-
-    if not _sim_ready_for_commands():
         return
 
     commands = _collect_commands(payload)
 
     for key, value in commands.items():
+        if key == "auto_ack_master_warn":
+            parsed = _to_float(value)
+            if parsed is None:
+                continue
+            if parsed < 0:
+                parsed = -1
+            _auto_ack_master_warn = parsed
+            _reset_auto_ack_master_warn_state()
+            continue
+
+    if not _sim_ready_for_commands():
+        return
+
+    for key, value in commands.items():
+        if key == "auto_ack_master_warn":
+            continue
+
         if key in TRANSPONDER_KEYS:
             parsed = _to_int(value)
             if parsed is None:
